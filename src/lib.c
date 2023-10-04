@@ -1,4 +1,4 @@
-#include "lib.h"
+#include <cc/lib.h>
 
 cc_arena* cc_arena_create(void)
 {

@@ -1,5 +1,5 @@
-#include "parser.h"
-#include "lib.h"
+#include <cc/parser.h>
+#include <cc/lib.h>
 
 static const cc_token* cc_parser_peek(const cc_parser* parse)
 {
@@ -495,7 +495,7 @@ fail:
     cc_parser_restore(parse, &save);
     return 0;
 }
-#include <stdio.h>
+
 int cc_parser_parse_body(cc_parser* parse, cc_ast_body* out_body)
 {
     cc_parser_savestate save = cc_parser_save(parse);
@@ -520,8 +520,6 @@ int cc_parser_parse_body(cc_parser* parse, cc_ast_body* out_body)
         
         *nextptr = next;
         nextptr = &next->next;
-        printf("Parsed stmt %.*s\n", (int)(next->end->begin - next->begin->begin), next->begin->begin);
-        printf("Body ptrs: %p %p\n", out_body->begin, out_body->stmt);
     }
     
     if (!cc_parser_eat(parse, CC_TOKENID_RIGHT_CURLY))

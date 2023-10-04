@@ -1,4 +1,4 @@
-#include "lexer.h"
+#include <cc/lexer.h>
 
 typedef struct cc_keyword
 {
@@ -176,4 +176,40 @@ int cc_lexer_read(cc_lexer* lex, cc_token* out_tk)
         lex->str = out_tk->end;
 
     return found;
+}
+
+int cc_lexer_readall(const cc_char* begin, const cc_char* end, cc_token** out_array, size_t* out_len)
+{
+    cc_lexer lex;
+    cc_token next;
+    cc_token* tokens = NULL;
+    size_t num_tokens = 0;
+
+    cc_lexer_init(&lex, begin, end);
+    while (cc_lexer_read(&lex, &next))
+    {
+        ++num_tokens;
+        tokens = (cc_token*)realloc(tokens, num_tokens * sizeof(tokens[0]));
+        tokens[num_tokens - 1] = next;
+    }
+
+    *out_array = tokens;
+    *out_len = num_tokens;
+
+    return lex.str == lex.end;
+}
+
+int cc_token_strcmp(const cc_token* tk, const cc_char* string)
+{
+    size_t tk_len = cc_token_len(tk);
+    if (tk_len == 0 && string[0] == 0)
+        return 0;
+
+    for (size_t i = 0; i < tk_len; ++i)
+    {
+        int cmp = tk->begin[i] - string[i];
+        if (cmp) // Assuming tk has no null chars, this will return when string ends
+            return cmp;
+    }
+    return 0;
 }

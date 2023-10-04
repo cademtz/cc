@@ -1,4 +1,4 @@
-#include "ast.h"
+#include <cc/ast.h>
 
 int cc_ast_type_verify(const cc_ast_type* t)
 {

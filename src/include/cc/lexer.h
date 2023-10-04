@@ -72,33 +72,40 @@ typedef struct cc_token
 /**
  * @brief Initialize a lexer with the string to be read
  * @param begin A string with no null characters
- * @param end (optional) End of the string. `nullptr` works for a null-terminated string.
+ * @param end (optional) End of the string. Use `nullptr` for a null-terminated string.
  */
 void cc_lexer_init(cc_lexer* lex, const cc_char* begin, const cc_char* end);
 /**
  * @brief Read a token and advance the lexer
- * @param out_tk Location to store the read token
+ * @param out_tk Receives the next token
  * @return 0 if nothing was read
  */
 int cc_lexer_read(cc_lexer* lex, cc_token* out_tk);
-/** Length of the token's string, in bytes */
-static size_t cc_token_len(const cc_token* tk) { return tk->end - tk->begin; }
+/**
+ * @brief Create an array of all tokens that can be read.
+ * Make sure to free the array after use.
+ * @param begin A string with no null characters
+ * @param end (optional) End of the string. Use `nullptr` for a null-terminated string.
+ * @param out_array Receives the array pointer. Free after use.
+ * @param out_len Receives the array length
+ * @return 1 if all text was read. 0 if invalid text was encountered.
+ */
+int cc_lexer_readall(const cc_char* begin, const cc_char* end, cc_token** out_array, size_t* out_len);
+/** The string length of a token */
+static size_t cc_token_len(const cc_token* tk) { return (size_t)(tk->end - tk->begin) / sizeof(cc_char); }
+/**
+ * @brief The string length of a range of tokens
+ * @param begin The first token
+ * @param end A pointer past the end token
+ */
+static size_t cc_token_len_range(const cc_token* begin, const cc_token* end) {
+    if (begin == end)
+        return 0;
+    return (size_t)((end-1)->end - begin->begin) / sizeof(cc_char);
+}
 /**
  * Compare a token's string with a null-terminated string
  * @param string A null-terminated string
  * @return 0 if the strings are identical
  */
-static int cc_token_strcmp(const cc_token* tk, const cc_char* string)
-{
-    size_t tk_len = cc_token_len(tk);
-    if (tk_len == 0 && string[0] == 0)
-        return 0;
-
-    for (size_t i = 0; i < tk_len; ++i)
-    {
-        int cmp = tk->begin[i] - string[i];
-        if (cmp) // Assuming tk has no null chars, this will return when string ends
-            return cmp;
-    }
-    return 0;
-}
+int cc_token_strcmp(const cc_token* tk, const cc_char* string);

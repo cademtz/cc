@@ -2,13 +2,13 @@
 #include <stdio.h>
 
 static const char* source_code =
-"int main()"
+"int calc_number(int initial, int iterations)"
 "{"
 "   int i;"
-"   i = 5;"
+"   i = initial;"
 "loop:"
 "   i = (i * i - 1);"
-"   if (i < 50) {"
+"   if (i < iterations) {"
 "       goto loop;"
 "   }"
 "   return i;"

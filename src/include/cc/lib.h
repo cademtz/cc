@@ -6,18 +6,18 @@
 #include <ctype.h>
 
 #ifndef CC_LIB
-#define cc_strlen strlen
-#define cc_isdigit isdigit
-#define cc_isspace isspace
-#define cc_isalpha isalpha
-#define cc_isalnum isalnum
-#define cc_strncmp strncmp
-#endif
+    #define cc_strlen strlen
+    #define cc_isdigit isdigit
+    #define cc_isspace isspace
+    #define cc_isalpha isalpha
+    #define cc_isalnum isalnum
+    #define cc_strncmp strncmp
 
-typedef char cc_char;
-// Format a string literal to use the correct character type.
-// So, if `cc_char` is `wchar_t` then `CC_STR("text")` must become `L"text"`
-#define CC_STR(x) x
+    typedef char cc_char;
+    // Format a string literal to use the correct character type.
+    // So, if `cc_char` is `wchar_t` then `CC_STR("text")` must become `L"text"`
+    #define CC_STR(x) x
+#endif
 
 typedef struct cc_arena
 {

@@ -60,12 +60,6 @@ typedef struct cc_ast_decl
     struct cc_ast_body* body;
 } cc_ast_decl;
 
-typedef struct cc_ast_param_list
-{
-    struct cc_ast_param_list* next;
-    cc_ast_decl decl;
-} cc_ast_arglist;
-
 enum cc_ast_constid
 {
     CC_AST_CONSTID_INT,

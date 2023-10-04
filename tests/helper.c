@@ -1,6 +1,6 @@
 #include "helper.h"
-#include "../src/lexer.h"
-#include "../src/parser.h"
+#include <cc/lexer.h>
+#include <cc/parser.h>
 #include <stdio.h>
 #include <assert.h>
 #include <stdlib.h>
@@ -14,28 +14,12 @@ void test__assert(const char* comment, int result, const char* file, int line) {
 
 int helper_create_parser(cc_parser* out_parser, const char* source_code)
 {
-    cc_lexer lexer;
-    cc_token tk;
-    cc_arena* a = cc_arena_create();
+    cc_token* tokens;
+    size_t num_tokens;
 
-    cc_lexer_init(&lexer, source_code, 0);
-
-    size_t token_count = 0;
-    while (cc_lexer_read(&lexer, &tk))
-    {
-        *(cc_token*)cc_arena_alloc(&a, sizeof(cc_token)) = tk;
-        ++token_count;
-    }
-
-    cc_token* tokens_begin = (cc_token*)cc_arena_dataptr(a);
-    cc_token* tokens_end = tokens_begin + token_count;
-
-    printf("Tokens:\n");
-    for (cc_token* next = tokens_begin; next < tokens_end; ++next)
-        printf("%d:\t%.*s\n", next->tokenid, (int)cc_token_len(next), next->begin);
-
-    cc_parser_create(out_parser, tokens_begin, tokens_end);
-    // arena `a` is leaked. Whatever.
+    if (!cc_lexer_readall(source_code, NULL, &tokens, &num_tokens))
+        return 0;
+    cc_parser_create(out_parser, tokens, tokens + num_tokens);
     return 1;
 }
 

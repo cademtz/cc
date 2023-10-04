@@ -1,7 +1,7 @@
 #pragma once
-#include "../src/ast.h"
-#include "../src/parser.h"
-#include "../src/lib.h"
+#include <cc/ast.h>
+#include <cc/parser.h>
+#include <cc/lib.h>
 #include <assert.h>
 
 /*
