@@ -8,7 +8,7 @@
 void test__assert(const char* comment, int result, const char* file, int line) {
     if (result)
         return;
-    printf("Assertion failed: %s\nIn file \"%s:%d\"", comment, file, line);
+    printf("Assertion failed: %s\nIn file \"%s:%d\"\n", comment, file, line);
     exit(1);
 }
 
@@ -151,6 +151,7 @@ int print_ast_binary(const cc_ast_expr* expr)
     case CC_AST_EXPRID_COMPARE_GT:      operator = "> "; break;
     case CC_AST_EXPRID_COMPARE_GTE:     operator = ">= "; break;
     case CC_AST_EXPRID_COMPARE_EQ:      operator = "== "; break;
+    case CC_AST_EXPRID_COMPARE_NEQ:     operator = "!="; break;
     default:
         return 0;
     }
@@ -258,5 +259,5 @@ void print_ast_body(const cc_ast_body* body)
         print_ast_stmt(next);
         printf("\n");
     }
-    printf("} ");
+    printf("}\n");
 }

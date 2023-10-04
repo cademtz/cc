@@ -9,7 +9,7 @@
  * `expr` is an assertion.
  * Example: `test_assert("Type must be an int", decl.type == CC_AST_TYPEID_INT)`
  */
-#define test_assert(comment, expr) test__assert(comment, expr, __FILE__, __LINE__)
+#define test_assert(comment, expr) test__assert(comment, (expr) != 0, __FILE__, __LINE__)
 void test__assert(const char* comment, int result, const char* file, int line);
 
 /**

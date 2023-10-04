@@ -8,13 +8,24 @@ static const cc_token* cc_parser_peek(const cc_parser* parse)
     return NULL;
 }
 
-/// @brief Get the next token and advance if `tokenid` matches
-/// @return nullptr if the next token doesn't match
+/// @brief Advance if `tokenid` appears next
+/// @return nullptr if not found
 static const cc_token* cc_parser_eat(cc_parser* parse, int tokenid)
 {
     if (parse->next < parse->end && parse->next->tokenid == tokenid)
         return parse->next++;
     return NULL;
+}
+
+/// @brief Advance if `tokenid1` and `tokenid2` appear next in that order
+/// @return 0 if not found
+static const int cc_parser_eat_2(cc_parser* parse, int tokenid1, int tokenid2)
+{
+    const cc_token* save = parse->next;
+    if (cc_parser_eat(parse, tokenid1) && cc_parser_eat(parse, tokenid2))
+        return 1;
+    parse->next = save;
+    return 0;
 }
 
 /// @param out_type Flags will be combined with existing ones, and a new `end` is stored
@@ -282,6 +293,8 @@ fail:
     return 0;
 }
 
+/// @brief Parse a constant or variable
+/// @return 0 on failure
 int cc_parser_parse_expr_atomic(cc_parser* parse, cc_ast_expr* out_expr)
 {
     if (cc_parser_parse_expr_group(parse, out_expr))
@@ -299,6 +312,8 @@ int cc_parser_parse_expr_atomic(cc_parser* parse, cc_ast_expr* out_expr)
     return 1;
 }
 
+/// @brief Parse a unary or lower-precedence expr
+/// @return 0 on failure
 int cc_parser_parse_expr_unary(cc_parser* parse, cc_ast_expr* out_expr)
 {
     if (cc_parser_parse_expr_atomic(parse, out_expr))
@@ -338,70 +353,343 @@ fail:
     return 0;
 }
 
-// FIXME: This shouldn't just grab a unary for the rhs. It must include lower-precedence binaries
-/// @brief Parses a single binary expression. Non-recursive.
-/// @param out_expr Destination. May be the same pointer as `lhs`
-/// @return 0 on failure
-int cc_parser_parse_binary(cc_parser* parse, const cc_ast_expr* lhs, cc_ast_expr* out_expr)
-{   
-    cc_parser_savestate save = cc_parser_save(parse);
-    
-    int exprid;
-    const cc_token* tk;
-    if (tk = cc_parser_peek(parse))
-    {
-        switch (tk->tokenid)
-        {
-        case CC_TOKENID_PLUS:           exprid = CC_AST_EXPRID_ADD; break;
-        case CC_TOKENID_MINUS:          exprid = CC_AST_EXPRID_SUB; break;
-        case CC_TOKENID_ASTERISK:       exprid = CC_AST_EXPRID_MUL; break;
-        case CC_TOKENID_SLASH:          exprid = CC_AST_EXPRID_DIV; break;
-        case CC_TOKENID_PERCENT:        exprid = CC_AST_EXPRID_MOD; break;
-        case CC_TOKENID_CARET:          exprid = CC_AST_EXPRID_BIT_OR; break;
-        case CC_TOKENID_AMP:            exprid = CC_AST_EXPRID_BIT_AND; break;
-        case CC_TOKENID_PIPE:           exprid = CC_AST_EXPRID_BIT_OR; break;
-        case CC_TOKENID_TILDE:          exprid = CC_AST_EXPRID_BIT_NOT; break;
-        case CC_TOKENID_AMPAMP:         exprid = CC_AST_EXPRID_BOOL_AND; break;
-        case CC_TOKENID_PIPEPIPE:       exprid = CC_AST_EXPRID_BOOL_OR; break;
-        case CC_TOKENID_EXCLAMATION:    exprid = CC_AST_EXPRID_BOOL_NOT; break;
-        case CC_TOKENID_EQUAL:          exprid = CC_AST_EXPRID_ASSIGN; break;
-        case CC_TOKENID_LEFT_ANGLE:     exprid = CC_AST_EXPRID_COMPARE_LT; break;
-        case CC_TOKENID_RIGHT_ANGLE:    exprid = CC_AST_EXPRID_COMPARE_GT; break;
-        default:
-            return 0; // Parser state was unchanged, so simply return 0
-        }
-        ++parse->next;
-    }
-
-    cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
-    if (!cc_parser_parse_expr_unary(parse, rhs))
-        goto fail;
-    
+/**
+ * @brief Combine a left and right-side expr into one binary expr.
+ * We expect `lhs` to be a stack value and `rhs` to be dynamically allocated.
+ * @param lhs Any expression. Always copied.
+ * @param rhs Any expression. Never copied. Must not be `lhs` or `out_expr`.
+ * @param out_expr Destination. May be the same pointer as `lhs`.
+ * @return 0 on failure
+ */
+static void cc_parser_combine_sides(cc_parser* parse, int exprid, const cc_ast_expr* lhs, cc_ast_expr* rhs, cc_ast_expr* out_expr)
+{
     // Move lhs to arena
     cc_ast_expr* safe_lhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*lhs));
     memcpy(safe_lhs, lhs, sizeof(*lhs));
 
-    out_expr->begin = lhs->begin;
+    out_expr->begin = safe_lhs->begin;
+    out_expr->end = rhs->end;
+    out_expr->exprid = exprid;
     out_expr->un.binary.lhs = safe_lhs;
     out_expr->un.binary.rhs = rhs;
-    out_expr->exprid = exprid;
-    out_expr->end = rhs->end;
-    return 1;
-
-fail:
-    cc_parser_restore(parse, &save);
-    return 0;
 }
 
-int cc_parser_parse_expr(cc_parser* parse, cc_ast_expr* out_expr)
+int cc_parser_parse_muldiv(cc_parser* parse, cc_ast_expr* out_expr)
 {
     if (!cc_parser_parse_expr_unary(parse, out_expr))
         return 0;
     
-    while (cc_parser_parse_binary(parse, out_expr, out_expr))
-        ;
+    while(1) // Keep parsing the same operator
+    {
+        cc_parser_savestate save = cc_parser_save(parse);
+        int exprid;
 
-    return 1;
+        if (cc_parser_eat(parse, CC_TOKENID_SLASH))
+            exprid = CC_AST_EXPRID_DIV;
+        else if (cc_parser_eat(parse, CC_TOKENID_PERCENT))
+            exprid = CC_AST_EXPRID_MOD;
+        else if (cc_parser_eat(parse, CC_TOKENID_ASTERISK))
+            exprid = CC_AST_EXPRID_MUL;
+        else
+            return 1;
+        
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        if (!cc_parser_parse_expr_unary(parse, rhs))
+        {
+            cc_parser_restore(parse, &save);
+            return 1;
+        }
+        cc_parser_combine_sides(parse, exprid, out_expr, rhs, out_expr);
+    }
+}
+
+int cc_parser_parse_addsub(cc_parser* parse, cc_ast_expr* out_expr)
+{
+    if (!cc_parser_parse_muldiv(parse, out_expr))
+        return 0;
+    
+    while(1) // Keep parsing the same operator
+    {
+        cc_parser_savestate save = cc_parser_save(parse);
+        int exprid;
+
+        if (cc_parser_eat(parse, CC_TOKENID_PLUS))
+            exprid = CC_AST_EXPRID_ADD;
+        else if (cc_parser_eat(parse, CC_TOKENID_MINUS))
+            exprid = CC_AST_EXPRID_SUB;
+        else
+            return 1;
+        
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        if (!cc_parser_parse_muldiv(parse, rhs))
+        {
+            cc_parser_restore(parse, &save);
+            return 1;
+        }
+        cc_parser_combine_sides(parse, exprid, out_expr, rhs, out_expr);
+    }
+}
+
+int cc_parser_parse_bitshift(cc_parser* parse, cc_ast_expr* out_expr)
+{
+    if (!cc_parser_parse_addsub(parse, out_expr))
+        return 0;
+    
+    while(1) // Keep parsing the same operator
+    {
+        cc_parser_savestate save = cc_parser_save(parse);
+        int exprid;
+    
+        if (cc_parser_eat_2(parse, CC_TOKENID_LEFT_ANGLE, CC_TOKENID_LEFT_ANGLE))
+            exprid = CC_AST_EXPRID_LSHIFT;
+        else if (cc_parser_eat_2(parse, CC_TOKENID_RIGHT_ANGLE, CC_TOKENID_RIGHT_ANGLE))
+            exprid = CC_AST_EXPRID_RSHIFT;
+        else
+            return 1;
+        
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        if (!cc_parser_parse_addsub(parse, rhs))
+        {
+            cc_parser_restore(parse, &save);
+            return 1;
+        }
+        cc_parser_combine_sides(parse, exprid, out_expr, rhs, out_expr);
+    }
+}
+
+/// @brief Parse the less/greater-than-or-equal expr
+int cc_parser_parse_relational(cc_parser* parse, cc_ast_expr* out_expr)
+{
+    if (!cc_parser_parse_bitshift(parse, out_expr))
+        return 0;
+    
+    while(1) // Keep parsing the same operator
+    {
+        cc_parser_savestate save = cc_parser_save(parse);
+        int exprid;
+
+        if (cc_parser_eat(parse, CC_TOKENID_LEFT_ANGLEEQUAL))
+            exprid = CC_AST_EXPRID_COMPARE_LTE;
+        else if (cc_parser_eat(parse, CC_TOKENID_RIGHT_ANGLEEQUAL))
+            exprid = CC_AST_EXPRID_COMPARE_GTE;
+        else if (cc_parser_eat(parse, CC_TOKENID_LEFT_ANGLE))
+            exprid = CC_AST_EXPRID_COMPARE_LT;
+        else if (cc_parser_eat(parse, CC_TOKENID_RIGHT_ANGLE))
+            exprid = CC_AST_EXPRID_COMPARE_GT;
+        else
+            return 1;
+        
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        if (!cc_parser_parse_bitshift(parse, rhs))
+        {
+            cc_parser_restore(parse, &save);
+            return 1;
+        }
+        cc_parser_combine_sides(parse, exprid, out_expr, rhs, out_expr);
+    }
+}
+
+/// @brief Parse the equal/not-equal expr
+int cc_parser_parse_relational_eq(cc_parser* parse, cc_ast_expr* out_expr)
+{
+    if (!cc_parser_parse_relational(parse, out_expr))
+        return 0;
+    
+    while(1) // Keep parsing the same operator
+    {
+        cc_parser_savestate save = cc_parser_save(parse);
+        int exprid;
+
+        if (cc_parser_eat(parse, CC_TOKENID_EQUALEQUAL))
+            exprid = CC_AST_EXPRID_COMPARE_EQ;
+        else if (cc_parser_eat(parse, CC_TOKENID_EXCLAMATIONEQUAL))
+            exprid = CC_AST_EXPRID_COMPARE_NEQ;
+        else
+            return 1;
+        
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        if (!cc_parser_parse_relational(parse, rhs))
+        {
+            cc_parser_restore(parse, &save);
+            return 1;
+        }
+        cc_parser_combine_sides(parse, exprid, out_expr, rhs, out_expr);
+    }
+}
+
+/// @brief Parse the bitwise and expr
+int cc_parser_parse_bitand(cc_parser* parse, cc_ast_expr* out_expr)
+{
+    if (!cc_parser_parse_relational_eq(parse, out_expr))
+        return 0;
+    
+    while(1) // Keep parsing the same operator
+    {
+        cc_parser_savestate save = cc_parser_save(parse);
+
+        if (!cc_parser_eat(parse, CC_TOKENID_AMP))
+            return 1;
+        
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        if (!cc_parser_parse_relational_eq(parse, rhs))
+        {
+            cc_parser_restore(parse, &save);
+            return 1;
+        }
+        cc_parser_combine_sides(parse, CC_AST_EXPRID_BIT_AND, out_expr, rhs, out_expr);
+    }
+}
+
+/// @brief Parse the bitwise xor expr
+int cc_parser_parse_bitxor(cc_parser* parse, cc_ast_expr* out_expr)
+{
+    if (!cc_parser_parse_bitand(parse, out_expr))
+        return 0;
+    
+    while(1) // Keep parsing the same operator
+    {
+        cc_parser_savestate save = cc_parser_save(parse);
+
+        if (!cc_parser_eat(parse, CC_TOKENID_CARET))
+            return 1;
+        
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        if (!cc_parser_parse_bitand(parse, rhs))
+        {
+            cc_parser_restore(parse, &save);
+            return 1;
+        }
+        cc_parser_combine_sides(parse, CC_AST_EXPRID_BIT_XOR, out_expr, rhs, out_expr);
+    }
+}
+
+/// @brief Parse the bitwise or expr
+int cc_parser_parse_bitor(cc_parser* parse, cc_ast_expr* out_expr)
+{
+    if (!cc_parser_parse_bitxor(parse, out_expr))
+        return 0;
+    
+    while(1) // Keep parsing the same operator
+    {
+        cc_parser_savestate save = cc_parser_save(parse);
+
+        if (!cc_parser_eat(parse, CC_TOKENID_PIPE))
+            return 1;
+        
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        if (!cc_parser_parse_bitxor(parse, rhs))
+        {
+            cc_parser_restore(parse, &save);
+            return 1;
+        }
+        cc_parser_combine_sides(parse, CC_AST_EXPRID_BIT_OR, out_expr, rhs, out_expr);
+    }
+}
+
+/// @brief Parse the boolean and expr
+int cc_parser_parse_and(cc_parser* parse, cc_ast_expr* out_expr)
+{
+    if (!cc_parser_parse_bitor(parse, out_expr))
+        return 0;
+    
+    while(1) // Keep parsing the same operator
+    {
+        cc_parser_savestate save = cc_parser_save(parse);
+
+        if (!cc_parser_eat(parse, CC_TOKENID_AMPAMP))
+            return 1;
+        
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        if (!cc_parser_parse_bitor(parse, rhs))
+        {
+            cc_parser_restore(parse, &save);
+            return 1;
+        }
+        cc_parser_combine_sides(parse, CC_AST_EXPRID_BOOL_AND, out_expr, rhs, out_expr);
+    }
+}
+
+/// @brief Parse the boolean or expr
+int cc_parser_parse_or(cc_parser* parse, cc_ast_expr* out_expr)
+{
+    if (!cc_parser_parse_and(parse, out_expr))
+        return 0;
+    
+    while(1) // Keep parsing the same operator
+    {
+        cc_parser_savestate save = cc_parser_save(parse);
+
+        if (!cc_parser_eat(parse, CC_TOKENID_PIPEPIPE))
+            return 1;
+        
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        if (!cc_parser_parse_and(parse, rhs))
+        {
+            cc_parser_restore(parse, &save);
+            return 1;
+        }
+        cc_parser_combine_sides(parse, CC_AST_EXPRID_BOOL_OR, out_expr, rhs, out_expr);
+    }
+}
+
+/// @brief Parse the ternary conditional expr
+int cc_parser_parse_conditional(cc_parser* parse, cc_ast_expr* out_expr)
+{
+    if (!cc_parser_parse_or(parse, out_expr))
+        return 0;
+    
+    cc_parser_savestate save;
+    while(1) // Keep parsing the same operator
+    {
+        save = cc_parser_save(parse);
+        if (!cc_parser_eat(parse, CC_TOKENID_QUESTION))
+            return 1;
+        
+        cc_ast_expr* mid = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*mid));
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        if (!cc_parser_parse_or(parse, mid)
+            || !cc_parser_eat(parse, CC_TOKENID_COLON)
+            || !cc_parser_parse_or(parse, rhs))
+        {
+            cc_parser_restore(parse, &save);
+            return 1;
+        }
+        
+        // Copy out_expr to arena
+        cc_ast_expr* lhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*lhs));
+        memcpy(lhs, out_expr, sizeof(*lhs));
+        out_expr->begin = lhs->begin;
+        out_expr->end = rhs->end;
+        out_expr->exprid = CC_AST_EXPRID_CONDITIONAL;
+        out_expr->un.ternary.lhs = lhs;
+        out_expr->un.ternary.middle = mid;
+        out_expr->un.ternary.rhs = rhs;
+    }
+}
+
+int cc_parser_parse_assign(cc_parser* parse, cc_ast_expr* out_expr)
+{
+    if (!cc_parser_parse_conditional(parse, out_expr))
+        return 0;
+    
+    while (1)
+    {
+        cc_parser_savestate save = cc_parser_save(parse);
+        if (!cc_parser_eat(parse, CC_TOKENID_EQUAL))
+            return 1;
+
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        if (!cc_parser_parse_conditional(parse, rhs))
+        {
+            cc_parser_restore(parse, &save);
+            return 1;
+        }
+        cc_parser_combine_sides(parse, CC_AST_EXPRID_ASSIGN, out_expr, rhs, out_expr);
+    }
+}
+
+int cc_parser_parse_expr(cc_parser* parse, cc_ast_expr* out_expr) {
+    return cc_parser_parse_assign(parse, out_expr);
 }
 
 int cc_parser_parse_stmt_label(cc_parser* parse, cc_ast_stmt* out_stmt)

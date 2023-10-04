@@ -11,6 +11,7 @@ static void run_test(const char* name, int(*test)(void)) {
 
 int main(int argc, char** argv)
 {
+    run_test("test_expr", &test_expr);
     run_test("test_stmt", &test_stmt);
     run_test("test_function", &test_function);
 

@@ -3,6 +3,8 @@
 
 enum cc_tokenid
 {
+    CC_TOKENID__NULL,
+    
     // Keywords, constants
     CC_TOKENID_IDENTIFIER,
     CC_TOKENID_INTCONST,
@@ -25,25 +27,27 @@ enum cc_tokenid
     CC_TOKENID_CONTINUE,
 
     // Operators, punctuation
-    CC_TOKENID_PLUSPLUS,
+    CC_TOKENID_PLUSPLUS, // '++'
     CC_TOKENID_PLUS,
-    CC_TOKENID_MINUSMINUS,
+    CC_TOKENID_MINUSMINUS, // '--'
     CC_TOKENID_MINUS,
     CC_TOKENID_SLASH,
     CC_TOKENID_PERCENT,
     CC_TOKENID_ASTERISK,
-    CC_TOKENID_AMPAMP,
+    CC_TOKENID_AMPAMP, // '&&'
     CC_TOKENID_AMP,
-    CC_TOKENID_PIPEPIPE,
+    CC_TOKENID_PIPEPIPE, // '||'
     CC_TOKENID_PIPE,
     CC_TOKENID_CARET,
-    CC_TOKENID_EQUALEQUAL,
+    CC_TOKENID_EQUALEQUAL, // '=='
     CC_TOKENID_EQUAL,
     CC_TOKENID_COMMA,
     CC_TOKENID_DOT,
     CC_TOKENID_COLON,
     CC_TOKENID_SEMICOLON,
+    CC_TOKENID_EXCLAMATIONEQUAL, // '!='
     CC_TOKENID_EXCLAMATION,
+    CC_TOKENID_QUESTION,
     CC_TOKENID_ARROW,
     CC_TOKENID_TILDE,
     CC_TOKENID_LEFT_CURLY,
@@ -52,7 +56,9 @@ enum cc_tokenid
     CC_TOKENID_RIGHT_ROUND,
     CC_TOKENID_LEFT_SQUARE,
     CC_TOKENID_RIGHT_SQUARE,
+    CC_TOKENID_LEFT_ANGLEEQUAL, // '<='
     CC_TOKENID_LEFT_ANGLE,
+    CC_TOKENID_RIGHT_ANGLEEQUAL, // '>='
     CC_TOKENID_RIGHT_ANGLE,
 };
 
@@ -109,3 +115,8 @@ static size_t cc_token_len_range(const cc_token* begin, const cc_token* end) {
  * @return 0 if the strings are identical
  */
 int cc_token_strcmp(const cc_token* tk, const cc_char* string);
+/**
+ * Compare two tokens by ID and string
+ * @return 0 if the tokens are identical. <0 if tk1 has a greater value. >1 if tk2 has a greater value.
+ */
+int cc_token_cmp(const cc_token* tk1, const cc_token* tk2);

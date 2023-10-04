@@ -49,7 +49,9 @@ static cc_keyword cc_punctuation_list[] =
     {".", CC_TOKENID_DOT},
     {":", CC_TOKENID_COLON},
     {";", CC_TOKENID_SEMICOLON},
+    {"!=", CC_TOKENID_EXCLAMATIONEQUAL},
     {"!", CC_TOKENID_EXCLAMATION},
+    {"?", CC_TOKENID_QUESTION},
     {"->", CC_TOKENID_ARROW},
     {"~", CC_TOKENID_TILDE},
     {"{", CC_TOKENID_LEFT_CURLY},
@@ -58,7 +60,9 @@ static cc_keyword cc_punctuation_list[] =
     {")", CC_TOKENID_RIGHT_ROUND},
     {"[", CC_TOKENID_LEFT_SQUARE},
     {"]", CC_TOKENID_RIGHT_SQUARE},
+    {"<=", CC_TOKENID_LEFT_ANGLEEQUAL},
     {"<", CC_TOKENID_LEFT_ANGLE},
+    {">=", CC_TOKENID_RIGHT_ANGLEEQUAL},
     {">", CC_TOKENID_RIGHT_ANGLE},
     {NULL, 0} // Null terminator. Do not remove.
 };
@@ -212,4 +216,22 @@ int cc_token_strcmp(const cc_token* tk, const cc_char* string)
             return cmp;
     }
     return 0;
+}
+
+int cc_token_cmp(const cc_token* tk1, const cc_token* tk2)
+{
+    int cmp = tk1->tokenid - tk2->tokenid;
+    if (cmp != 0)
+        return cmp;
+    
+    size_t tk1_len = cc_token_len(tk1);
+    size_t tk2_len = cc_token_len(tk2);
+    size_t min_len = tk1_len < tk2_len ? tk1_len : tk2_len;
+    cmp = cc_strncmp(tk1->begin, tk2->begin, min_len);
+    if (cmp != 0)
+        return cmp;
+    
+    if (tk1_len != tk2_len)
+        cmp = tk1_len > tk2_len ? 1 : -1;
+    return cmp;
 }

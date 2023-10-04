@@ -4,7 +4,7 @@
 static const char* src_decl = "int i;";
 static const char* src_assign = "i = 5;";
 static const char* src_label = "loop:";
-static const char* src_math = "i = (i * i - 1);";
+static const char* src_math = "i = i * i - 1;";
 static const char* src_if =
     "if (i < 50) {"
     "    goto loop;"
@@ -45,10 +45,10 @@ int test_stmt(void)
         test_assert("Stmt must be an expr", stmt.stmtid == CC_AST_STMTID_EXPR);
 
         cc_ast_expr* expr = &stmt.un.expr;
-        test_assert("Expr must be assignment", expr->exprid == CC_AST_EXPRID_ASSIGN);
-
         const cc_ast_expr* lhs = expr->un.binary.lhs;
         const cc_ast_expr* rhs = expr->un.binary.rhs;
+
+        test_assert("Expr must be assignment", expr->exprid == CC_AST_EXPRID_ASSIGN);
         test_assert("Lhs must be 'i'", lhs->exprid == CC_AST_EXPRID_VARIABLE);
         test_assert("Lhs must be 'i'", !cc_token_strcmp(lhs->un.variable, CC_STR("i")));
         test_assert("Rhs must be 5", rhs->exprid == CC_AST_EXPRID_CONST);
@@ -71,10 +71,10 @@ int test_stmt(void)
         test_assert("Stmt must be an expr", stmt.stmtid == CC_AST_STMTID_EXPR);
 
         cc_ast_expr* expr = &stmt.un.expr;
-        test_assert("Expr must be assignment", expr->exprid == CC_AST_EXPRID_ASSIGN);
-
         const cc_ast_expr* lhs = expr->un.binary.lhs;
         const cc_ast_expr* rhs = expr->un.binary.rhs;
+        
+        test_assert("Expr must be assignment", expr->exprid == CC_AST_EXPRID_ASSIGN);
         test_assert("Lhs must be 'i'", lhs->exprid == CC_AST_EXPRID_VARIABLE);
         test_assert("Lhs must be 'i'", !cc_token_strcmp(lhs->un.variable, CC_STR("i")));
         test_assert("Rhs must be subtraction", rhs->exprid == CC_AST_EXPRID_SUB);
@@ -101,8 +101,4 @@ int test_stmt(void)
         cc_parser_destroy(&parser);
     }
     return 1;
-
-fail:
-    cc_parser_destroy(&parser);
-    return 0;
 }

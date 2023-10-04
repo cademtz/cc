@@ -84,8 +84,8 @@ enum cc_ast_exprid
     CC_AST_EXPRID_REF,
     CC_AST_EXPRID_DEREF,
     CC_AST_EXPRID_CAST,
-    CC_AST_EXPRID_INC,
-    CC_AST_EXPRID_DEC,
+    CC_AST_EXPRID_INC, // Prefix increment
+    CC_AST_EXPRID_DEC, // Prefix decrement
     CC_AST_SIZEOF,
     CC_AST_EXPRID_BOOL_NOT,
     CC_AST_EXPRID_BIT_NOT,
@@ -112,9 +112,10 @@ enum cc_ast_exprid
     CC_AST_EXPRID_COMPARE_GT, // Greater than
     CC_AST_EXPRID_COMPARE_GTE, // Greater than or equal
     CC_AST_EXPRID_COMPARE_EQ, // Equal to
+    CC_AST_EXPRID_COMPARE_NEQ, // Not equal to
 
     // Ternary
-    CC_AST_EXPRID_CONDITIONAL,
+    CC_AST_EXPRID_CONDITIONAL, // x ? y : z
 };
 
 typedef struct cc_ast_expr
