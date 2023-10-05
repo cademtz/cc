@@ -5,5 +5,6 @@ add_executable(tests
     test_expr.c
     test_stmt.c
     test_function.c
+    test_block.c
 )
 target_include_directories(tests PRIVATE ${CC_INCLUDE_DIR})
