@@ -1,6 +1,18 @@
 #pragma once
 #include "lib.h"
 
+/**
+ * @file
+ * @brief A lexer which creates C tokens from a string.
+ * 
+ * The lexer API is very simple:
+ * 1. Call @ref cc_lexer_init with a string,
+ * 2. Call @ref cc_lexer_readall to get C tokens.
+ * 
+ * To read one token at a time, you can call @ref cc_lexer_read and no allocations will be made.
+ * This is ideal if you wish to count the tokens beforehand or store them elsewhere.
+ */
+
 enum cc_tokenid
 {
     CC_TOKENID__NULL,
@@ -82,7 +94,8 @@ typedef struct cc_token
  */
 void cc_lexer_init(cc_lexer* lex, const cc_char* begin, const cc_char* end);
 /**
- * @brief Read a token and advance the lexer
+ * @brief Read a single token and advance the lexer.
+ * No allocation is performed.
  * @param out_tk Receives the next token
  * @return 0 if nothing was read
  */

@@ -9,45 +9,50 @@
  * A block may only change control flow using its last instruction.
  * This means jumps, interrupts, and returns may not appear in the middle of a block.
  * 
- * IR functions have locals. Each local has a size and address. A local can be:
+ * IR functions have locals ( @ref cc_ir_local ). Each local has a size and address. A local can be:
  * - A code block
  * - An integer (of any size)
  * - A large constant
  * - The function itself
  * 
- * All locals are referenced by id. ( @ref cc_ir_localid )
+ * All locals are referenced by id ( @ref cc_ir_localid ).
  * A local's size and address can be read with a special load instruction.
  */
 
 #define CC_IR_MAX_OPERANDS 3
-typedef uint8_t cc_ir_localid;
+typedef uint16_t cc_ir_localid;
 
 /// @brief Enum of every opcode.
 /// If you modify this enum, then update @ref cc_ir_ins_formats to match.
 enum cc_ir_opcode
 {
     /// @brief Load constant `value` in `dst`.
-    /// Format: ldc local dst, u32 value
+    /// Format: `ldc local dst, u32 value`
     CC_IR_OPCODE_LDC,
     /// @brief Load the `target` local's address in `dst`.
-    /// Format: ldla local dst, local target
+    /// Format: `ldla local dst, local target`
     CC_IR_OPCODE_LDLA,
     /// @brief Load the `target` local's size in `dst`.
-    /// Format: ldls local dst, local target
+    /// Format: `ldls local dst, local target`
     CC_IR_OPCODE_LDLS,
     
     /// @brief Store `lhs + rhs` in `dst`.
     /// Format: add local dst, local lhs, local rhs
     CC_IR_OPCODE_ADD,
     /// @brief Store `lhs - rhs` in `dst`.
-    /// Format: add local dst, local lhs, local rhs
+    /// Format: `add local dst, local lhs, local rhs`
     CC_IR_OPCODE_SUB,
 
     /// @brief Jump to `addr` if `value` is not zero.
-    /// Format: jnz local addr, local value
+    /// Format: `jnz local addr, local value`
     CC_IR_OPCODE_JNZ,
-    /// @brief Return
+    /// @brief Return.
+    /// Format: `ret`
     CC_IR_OPCODE_RET,
+
+    /// @brief A hint that `dst` may be either `lhs` or `rhs`.
+    /// Format: `phi local dst, local lhs, local rhs`
+    CC_IR_OPCODE_PHI,
 
     /// @brief The number of valid opcodes.
     /// Do not create any opcodes greater-than or equal-to this value.
@@ -80,10 +85,10 @@ typedef struct cc_ir_ins_format
     uint8_t operand[CC_IR_MAX_OPERANDS];
 } cc_ir_ins_format;
 
-/// @brief Description of a local, including its name, type, and size
+/// @brief A function's local variable
 typedef struct cc_ir_local
 {
-    /// @brief (optional) Name
+    /// @brief (optional) Name. May be `NULL`.
     const char* name;
     /// @brief Variable size in bytes. Zero for other types.
     uint32_t var_size;
@@ -114,22 +119,34 @@ typedef struct cc_ir_ins
     } read;
 } cc_ir_ins;
 
-/// @brief An array of continuous instructions.
-/// Control flow only changes at the end of the block.
+/**
+ * @brief A block of instructions ( @ref cc_ir_ins ), part of a linked list of blocks.
+ * 
+ * Only the last instruction, in a block can change control flow.
+ * Otherwise, execution falls-through to @ref cc_ir_block.next_block.
+ */
 typedef struct cc_ir_block
 {
+    /// @brief A reallocating array of instructions
     cc_ir_ins* ins;
     size_t num_ins;
-    /// @brief The next block to visit. May be `nullptr`.
-    /// The next block is part of the same function.
+    /// @brief The next block in the list. May be `NULL`.
     struct cc_ir_block* next_block;
+    /// @brief The local describing this block
+    cc_ir_localid localid;
 } cc_ir_block;
 
-/// @brief A series of blocks and locals.
-/// Currently, removing locals is not supported.
+/**
+ * @brief A function with code blocks and locals.
+ * 
+ * Every function starts with one block (the entry block) and one local (the function).
+ * A local can be a variable, a block, a large constant, or the function itself.
+ */
 typedef struct cc_ir_func
 {
-    cc_ir_block* blocks;
+    /// @brief The entrypoint for execution
+    cc_ir_block* entry_block;
+    /// @brief A reallocating array of locals
     cc_ir_local* locals;
     size_t num_blocks;
     size_t num_locals;
@@ -139,23 +156,46 @@ typedef struct cc_ir_func
 /// @brief Array of every IR instruction's format, ordered by opcode
 const extern cc_ir_ins_format cc_ir_ins_formats[CC_IR_OPCODE__COUNT];
 
-void cc_ir_func_create(cc_ir_func* func);
+/// @brief Create a new IR function with a new empty entry block
+void cc_ir_func_create(cc_ir_func* func, const char* name);
+/// @brief Free the IR function, its blocks, and its locals
 void cc_ir_func_destroy(cc_ir_func* func);
-/// @brief Create a new block in the function
-/// @param name (optional) Block label
-cc_ir_block* cc_ir_func_block(cc_ir_func* func, const char* name);
-/// @brief Create a new int local in the function
-/// @param size_bytes Integer size, in bytes
-/// @param name (optional) Variable name
-/// @return The new local id
+/// @brief Get the function's localid to itself
+static cc_ir_localid cc_ir_func_getlocalself(const cc_ir_func* func) {
+    return 0;
+}
+/// @brief Get information about a function's local
+cc_ir_local* cc_ir_func_getlocal(const cc_ir_func* func, cc_ir_localid localid);
+/// @brief Get a block in the function
+cc_ir_block* cc_ir_func_getblock(const cc_ir_func* func, cc_ir_localid localid);
+/**
+ * @brief Create a new block following a previous one
+ * @param prev Previous block
+ * @param name (optional) Block name
+ * @return A new block
+ */
+cc_ir_block* cc_ir_func_insert(cc_ir_func* func, cc_ir_block* prev, const char* name);
+/**
+ * @brief Create a new int local in the function
+ * @param size_bytes Integer size, in bytes
+ * @param name (optional) Variable name
+ * @return The new local id
+ */
 cc_ir_localid cc_ir_func_int(cc_ir_func* func, uint32_t size_bytes, const char* name);
 
-/// @brief Load a constant integer to a local
-/// @return Instruction index
-size_t cc_ir_block_ldc(cc_ir_block* block, cc_ir_localid dst, uint32_t value);
-/// @brief Add two locals
-/// @return Instruction index
-size_t cc_ir_block_add(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs);
-/// @brief Subtract two locals
-/// @return Instruction index
-size_t cc_ir_block_sub(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs);
+/// @brief Load an integer constant: `dst = value`
+void cc_ir_block_ldc(cc_ir_block* block, cc_ir_localid dst, uint32_t value);
+/// @brief Load a local's address: `dst = & src`
+void cc_ir_block_ldla(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid src);
+/// @brief Load a local's size: `dst = sizeof(src)`
+void cc_ir_block_ldls(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid src);
+/// @brief Add two locals: `dst = lhs + rhs`
+void cc_ir_block_add(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs);
+/// @brief Subtract two locals: `dst = lhs - rhs`
+void cc_ir_block_sub(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs);
+/// @brief Jump if not zero: `if (value != 0) goto addr`
+void cc_ir_block_jnz(cc_ir_block* block, cc_ir_localid addr, cc_ir_localid value);
+/// @brief Return
+void cc_ir_block_ret(cc_ir_block* block);
+/// @brief Hint at the usage of two locals
+void cc_ir_block_phi(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs);

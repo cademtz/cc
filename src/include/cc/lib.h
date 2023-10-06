@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <ctype.h>
+#include <assert.h>
 
 #ifndef CC_LIB
     #define cc_strlen strlen
