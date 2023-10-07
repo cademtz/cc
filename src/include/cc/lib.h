@@ -34,3 +34,27 @@ void* cc_arena_alloc_align(cc_arena** a, size_t size, size_t align);
 void* cc_arena_alloc(cc_arena** a, size_t size);
 
 #define cc_arena_clear(a) cc_arena_resize(a, 0, 0)
+
+/**
+ * @brief Record heap allocations in order and free multiple of them at once.
+ * 
+ * This is mainly used by the parser, where every allocation
+ * made after a certain period may have to be undone.
+ */
+typedef struct cc_heaprecord
+{
+    /// @brief A growing array of every allocated pointer
+    void** allocs;
+    /// @brief Number of pointers in @ref allocs
+    size_t num_allocs;
+    /// @brief Capacity of @ref allocs
+    size_t cap_allocs;
+} cc_heaprecord;
+
+void cc_heaprecord_create(cc_heaprecord* record);
+void cc_heaprecord_destroy(cc_heaprecord* record);
+void* cc_heaprecord_alloc(cc_heaprecord* record, size_t size);
+void cc_heaprecord_free(cc_heaprecord* record, void* alloc);
+/// @brief Free the last `n` heap allocations
+/// @param n Number of allocations to free, where `n <= num_allocs`
+void cc_heaprecord_pop(cc_heaprecord* record, size_t n);

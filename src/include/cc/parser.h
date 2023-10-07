@@ -6,14 +6,14 @@
 typedef struct cc_parser_savestate
 {
     const cc_token* next;
-    size_t arena_size;
+    size_t num_allocs;
 } cc_parser_savestate;
 
 typedef struct cc_parser
 {
     const cc_token* end;
     const cc_token* next;
-    cc_arena* arena;
+    cc_heaprecord heap;
 } cc_parser;
 
 // TODO: Move everything to the arena?
@@ -27,11 +27,16 @@ int cc_parser_parse_const(cc_parser* parse, cc_ast_const* out_const);
 int cc_parser_parse_expr(cc_parser* parse, cc_ast_expr* out_expr);
 int cc_parser_parse_stmt(cc_parser* parse, cc_ast_stmt* out_stmt);
 int cc_parser_parse_body(cc_parser* parse, cc_ast_body* out_body);
-static cc_parser_savestate cc_parser_save(const cc_parser* parse) {
-    cc_parser_savestate s = { parse->next, parse->arena->size };
+static void* cc_parser_alloc(cc_parser* parse, size_t size) {
+    return cc_heaprecord_alloc(&parse->heap, size);
+}
+static cc_parser_savestate cc_parser_save(const cc_parser* parse)
+{
+    cc_parser_savestate s = { parse->next, parse->heap.num_allocs };
     return s;
 }
-static void cc_parser_restore(cc_parser* parse, const cc_parser_savestate* save) {
+static void cc_parser_restore(cc_parser* parse, const cc_parser_savestate* save)
+{
     parse->next = save->next;
-    cc_arena_resize(&parse->arena, save->arena_size, 0);
+    cc_heaprecord_pop(&parse->heap, parse->heap.num_allocs - save->num_allocs);
 }

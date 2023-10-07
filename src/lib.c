@@ -46,3 +46,48 @@ void* cc_arena_alloc(cc_arena** arena, size_t size)
     else if (size == sizeof(void*)) align = sizeof(void*);
     return cc_arena_alloc_align(arena, size, align);
 }
+
+void cc_heaprecord_create(cc_heaprecord* record) {
+    memset(record, 0, sizeof(*record));
+}
+void cc_heaprecord_destroy(cc_heaprecord* record)
+{
+    for (size_t i = 0; i < record->num_allocs; ++i)
+        free(record->allocs[i]);
+    free(record->allocs);
+    memset(record, 0, sizeof(*record));
+}
+void* cc_heaprecord_alloc(cc_heaprecord* record, size_t size)
+{
+    ++record->num_allocs;
+    if (record->num_allocs > record->cap_allocs)
+    {
+        ++record->cap_allocs;
+        record->allocs = realloc(record->allocs, record->cap_allocs * sizeof(record->allocs[0]));
+    }
+
+    void* alloc = malloc(size);
+    record->allocs[record->num_allocs - 1] = alloc;
+    return alloc;
+}
+void cc_heaprecord_free(cc_heaprecord* record, void* alloc)
+{
+    free(alloc);
+    // Find its array index and move the above items downwards
+    for (size_t i = 0; i < record->num_allocs - 1; ++i)
+    {
+        if (record->allocs[i] == alloc)
+        {
+            size_t next = i + 1;
+            memmove(record->allocs + i, record->allocs + next, record->num_allocs - next);
+            break;
+        }
+    }
+    --record->num_allocs;
+}
+void cc_heaprecord_pop(cc_heaprecord* record, size_t n)
+{
+    for (size_t i = record->num_allocs - n; i < record->num_allocs; ++i)
+        free(record->allocs[i]);
+    record->num_allocs -= n;
+}

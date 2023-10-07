@@ -81,7 +81,7 @@ static int cc_parser_parse_typeptr(cc_parser* parse, const cc_ast_type* lhs, cc_
         goto fail;
 
     // Copy lhs from stack to arena
-    cc_ast_type* saved_lhs = (cc_ast_type*)cc_arena_alloc(&parse->arena, sizeof(*lhs));
+    cc_ast_type* saved_lhs = (cc_ast_type*)cc_parser_alloc(parse, sizeof(*lhs));
     memcpy(saved_lhs, lhs, sizeof(*lhs));
 
     memset(out_type, 0, sizeof(*out_type));
@@ -111,11 +111,11 @@ void cc_parser_create(cc_parser* parse, const cc_token* begin, const cc_token* e
     memset(parse, 0, sizeof(*parse));
     parse->end = end;
     parse->next = begin;
-    parse->arena = cc_arena_create();
+    cc_heaprecord_create(&parse->heap);
 }
 
 void cc_parser_destroy(cc_parser* parse) {
-    cc_arena_destroy(parse->arena);
+    cc_heaprecord_destroy(&parse->heap);
 }
 
 int cc_parser_parse_type(cc_parser* parse, cc_ast_type* out_type)
@@ -193,7 +193,7 @@ int cc_parser_parse_functype(cc_parser* parse, const cc_ast_type* lhs, cc_ast_ty
             break;
         
         cc_parser_savestate interm_save = cc_parser_save(parse);
-        cc_ast_decl_list* decl_item = (cc_ast_decl_list*)cc_arena_alloc(&parse->arena, sizeof(*decl_item));
+        cc_ast_decl_list* decl_item = (cc_ast_decl_list*)cc_parser_alloc(parse, sizeof(*decl_item));
         if (!cc_parser_parse_decl(parse, &decl_item->decl))
         {
             cc_parser_restore(parse, &interm_save);
@@ -209,7 +209,7 @@ int cc_parser_parse_functype(cc_parser* parse, const cc_ast_type* lhs, cc_ast_ty
     
     // Nothing can possibly go wrong here!
     // Move lhs to the arena and start modifying out_type
-    cc_ast_type* ret_type = (cc_ast_type*)cc_arena_alloc(&parse->arena, sizeof(*ret_type));
+    cc_ast_type* ret_type = (cc_ast_type*)cc_parser_alloc(parse, sizeof(*ret_type));
     memcpy(ret_type, lhs, sizeof(*ret_type));
 
     memset(out_type, 0, sizeof(*out_type));
@@ -233,7 +233,7 @@ int cc_parser_parse_decl(cc_parser* parse, cc_ast_decl* out_decl)
     out_decl->begin = parse->next;
     out_decl->statik = cc_parser_eat(parse, CC_TOKENID_STATIC) ? 1 : 0;
 
-    out_decl->type = (cc_ast_type*)cc_arena_alloc(&parse->arena, sizeof(*out_decl->type));
+    out_decl->type = (cc_ast_type*)cc_parser_alloc(parse, sizeof(*out_decl->type));
     if (!cc_parser_parse_type(parse, out_decl->type)
         || !(out_decl->name = cc_parser_eat(parse, CC_TOKENID_IDENTIFIER)))
         goto fail;
@@ -242,7 +242,7 @@ int cc_parser_parse_decl(cc_parser* parse, cc_ast_decl* out_decl)
     {
         // Try to parse a body
         cc_parser_savestate interm_save = cc_parser_save(parse);
-        out_decl->body = (cc_ast_body*)cc_arena_alloc(&parse->arena, sizeof(*out_decl->body));
+        out_decl->body = (cc_ast_body*)cc_parser_alloc(parse, sizeof(*out_decl->body));
         if (!cc_parser_parse_body(parse, out_decl->body))
         {
             out_decl->body = NULL;
@@ -340,7 +340,7 @@ int cc_parser_parse_expr_unary(cc_parser* parse, cc_ast_expr* out_expr)
     else
         return 0;
     
-    cc_ast_expr* lhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*lhs));
+    cc_ast_expr* lhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*lhs));
     if (!cc_parser_parse_expr_atomic(parse, lhs));
         goto fail;
     
@@ -364,7 +364,7 @@ fail:
 static void cc_parser_combine_sides(cc_parser* parse, int exprid, const cc_ast_expr* lhs, cc_ast_expr* rhs, cc_ast_expr* out_expr)
 {
     // Move lhs to arena
-    cc_ast_expr* safe_lhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*lhs));
+    cc_ast_expr* safe_lhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*lhs));
     memcpy(safe_lhs, lhs, sizeof(*lhs));
 
     out_expr->begin = safe_lhs->begin;
@@ -393,7 +393,7 @@ int cc_parser_parse_muldiv(cc_parser* parse, cc_ast_expr* out_expr)
         else
             return 1;
         
-        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*rhs));
         if (!cc_parser_parse_expr_unary(parse, rhs))
         {
             cc_parser_restore(parse, &save);
@@ -420,7 +420,7 @@ int cc_parser_parse_addsub(cc_parser* parse, cc_ast_expr* out_expr)
         else
             return 1;
         
-        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*rhs));
         if (!cc_parser_parse_muldiv(parse, rhs))
         {
             cc_parser_restore(parse, &save);
@@ -447,7 +447,7 @@ int cc_parser_parse_bitshift(cc_parser* parse, cc_ast_expr* out_expr)
         else
             return 1;
         
-        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*rhs));
         if (!cc_parser_parse_addsub(parse, rhs))
         {
             cc_parser_restore(parse, &save);
@@ -479,7 +479,7 @@ int cc_parser_parse_relational(cc_parser* parse, cc_ast_expr* out_expr)
         else
             return 1;
         
-        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*rhs));
         if (!cc_parser_parse_bitshift(parse, rhs))
         {
             cc_parser_restore(parse, &save);
@@ -507,7 +507,7 @@ int cc_parser_parse_relational_eq(cc_parser* parse, cc_ast_expr* out_expr)
         else
             return 1;
         
-        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*rhs));
         if (!cc_parser_parse_relational(parse, rhs))
         {
             cc_parser_restore(parse, &save);
@@ -530,7 +530,7 @@ int cc_parser_parse_bitand(cc_parser* parse, cc_ast_expr* out_expr)
         if (!cc_parser_eat(parse, CC_TOKENID_AMP))
             return 1;
         
-        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*rhs));
         if (!cc_parser_parse_relational_eq(parse, rhs))
         {
             cc_parser_restore(parse, &save);
@@ -553,7 +553,7 @@ int cc_parser_parse_bitxor(cc_parser* parse, cc_ast_expr* out_expr)
         if (!cc_parser_eat(parse, CC_TOKENID_CARET))
             return 1;
         
-        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*rhs));
         if (!cc_parser_parse_bitand(parse, rhs))
         {
             cc_parser_restore(parse, &save);
@@ -576,7 +576,7 @@ int cc_parser_parse_bitor(cc_parser* parse, cc_ast_expr* out_expr)
         if (!cc_parser_eat(parse, CC_TOKENID_PIPE))
             return 1;
         
-        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*rhs));
         if (!cc_parser_parse_bitxor(parse, rhs))
         {
             cc_parser_restore(parse, &save);
@@ -599,7 +599,7 @@ int cc_parser_parse_and(cc_parser* parse, cc_ast_expr* out_expr)
         if (!cc_parser_eat(parse, CC_TOKENID_AMPAMP))
             return 1;
         
-        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*rhs));
         if (!cc_parser_parse_bitor(parse, rhs))
         {
             cc_parser_restore(parse, &save);
@@ -622,7 +622,7 @@ int cc_parser_parse_or(cc_parser* parse, cc_ast_expr* out_expr)
         if (!cc_parser_eat(parse, CC_TOKENID_PIPEPIPE))
             return 1;
         
-        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*rhs));
         if (!cc_parser_parse_and(parse, rhs))
         {
             cc_parser_restore(parse, &save);
@@ -645,8 +645,8 @@ int cc_parser_parse_conditional(cc_parser* parse, cc_ast_expr* out_expr)
         if (!cc_parser_eat(parse, CC_TOKENID_QUESTION))
             return 1;
         
-        cc_ast_expr* mid = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*mid));
-        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        cc_ast_expr* mid = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*mid));
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*rhs));
         if (!cc_parser_parse_or(parse, mid)
             || !cc_parser_eat(parse, CC_TOKENID_COLON)
             || !cc_parser_parse_or(parse, rhs))
@@ -656,7 +656,7 @@ int cc_parser_parse_conditional(cc_parser* parse, cc_ast_expr* out_expr)
         }
         
         // Copy out_expr to arena
-        cc_ast_expr* lhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*lhs));
+        cc_ast_expr* lhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*lhs));
         memcpy(lhs, out_expr, sizeof(*lhs));
         out_expr->begin = lhs->begin;
         out_expr->end = rhs->end;
@@ -678,7 +678,7 @@ int cc_parser_parse_assign(cc_parser* parse, cc_ast_expr* out_expr)
         if (!cc_parser_eat(parse, CC_TOKENID_EQUAL))
             return 1;
 
-        cc_ast_expr* rhs = (cc_ast_expr*)cc_arena_alloc(&parse->arena, sizeof(*rhs));
+        cc_ast_expr* rhs = (cc_ast_expr*)cc_parser_alloc(parse, sizeof(*rhs));
         if (!cc_parser_parse_conditional(parse, rhs))
         {
             cc_parser_restore(parse, &save);
@@ -799,7 +799,7 @@ int cc_parser_parse_body(cc_parser* parse, cc_ast_body* out_body)
     while (1)
     {
         cc_parser_savestate interm_save = cc_parser_save(parse);
-        cc_ast_stmt* next = (cc_ast_stmt*)cc_arena_alloc(&parse->arena, sizeof(*next));
+        cc_ast_stmt* next = (cc_ast_stmt*)cc_parser_alloc(parse, sizeof(*next));
         if (!cc_parser_parse_stmt(parse, next))
         {
             cc_parser_restore(parse, &interm_save);

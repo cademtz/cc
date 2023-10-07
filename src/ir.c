@@ -104,7 +104,6 @@ static cc_ir_ins* cc_ir_block_ins(cc_ir_block* block, uint8_t opcode)
 }
 
 /// @brief Shortcut to create a binary operation instruction
-/// @return Instruction index
 static void cc_ir_block_binary(cc_ir_block* block, uint8_t opcode, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs)
 {
     cc_ir_ins* ins = cc_ir_block_ins(block, opcode);
