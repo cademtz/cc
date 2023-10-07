@@ -79,7 +79,7 @@ void cc_heaprecord_free(cc_heaprecord* record, void* alloc)
         if (record->allocs[i] == alloc)
         {
             size_t next = i + 1;
-            memmove(record->allocs + i, record->allocs + next, record->num_allocs - next);
+            memmove(record->allocs + i, record->allocs + next, (record->num_allocs - next) * sizeof(record->allocs[0]));
             break;
         }
     }
