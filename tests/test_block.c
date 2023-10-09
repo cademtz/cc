@@ -12,6 +12,9 @@ static void print_ir_local(const cc_ir_func* func, cc_ir_localid localid)
     case CC_IR_LOCALTYPEID_INT:
         printf("i%d ", local->var_size * 8);
         break;
+    case CC_IR_LOCALTYPEID_PTR: printf("ptr "); break;
+    default:
+        printf("<unknown local type> ");
     }
     if (local->name)
         printf("%s", local->name);
@@ -48,7 +51,15 @@ static void print_ir_func(const cc_ir_func* func)
                     switch (fmt->operand[i])
                     {
                     case CC_IR_OPERAND_U32: printf(" %u,", ins->read.u32); break;
-                    case CC_IR_OPERAND_LOCAL: print_ir_local(func, ins->read.local[0]); break;
+                    case CC_IR_OPERAND_LOCAL:
+                    {
+                        int read_index = i - 1;
+                        if (read_index >= 0 && read_index <= 1)
+                            print_ir_local(func, ins->read.local[read_index]);
+                        else
+                            printf(" <invalid read index>,");
+                        break;
+                    }
                     default: printf(" <unknown operand>,"); break;
                     }
                 }
@@ -69,15 +80,15 @@ int test_block(void)
     // Create some local variables
     cc_ir_localid my_int = cc_ir_func_int(&func, 4, "my_int");
     cc_ir_localid negative_int = cc_ir_func_int(&func, 4, "negative_int");
-    cc_ir_localid ptr_end = cc_ir_func_int(&func, 4, "ptr_end");
+    cc_ir_localid ptr_end = cc_ir_func_ptr(&func, "end_ptr");
 
     // Program the entry block
     cc_ir_block_ldla(entry, ptr_end, end->localid);         // ptr_end = &end
     cc_ir_block_ldc(entry, my_int, 9);                      // my_int = 9
     cc_ir_block_ldc(entry, negative_int, (uint32_t)-4);     // negative_int = -4
     cc_ir_block_add(entry, my_int, my_int, negative_int);   // my_int = my_int + negative_int
-    cc_ir_block_jnz(entry, ptr_end, my_int);                // if (!my_int) goto ptr_end
     cc_ir_block_add(entry, my_int, my_int, negative_int);   // my_int = my_int + negative_int
+    cc_ir_block_jnz(entry, ptr_end, my_int);                // if (my_int != 0) goto ptr_end
 
     // Program the end block
     cc_ir_block_ret(end);

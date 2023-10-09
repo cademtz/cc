@@ -17,6 +17,8 @@
  * 
  * All locals are referenced by id ( @ref cc_ir_localid ).
  * A local's size and address can be read with a special load instruction.
+ * 
+ * Integer overflow must always wrap.
  */
 
 #define CC_IR_MAX_OPERANDS 3
@@ -26,7 +28,7 @@ typedef uint16_t cc_ir_localid;
 /// If you modify this enum, then update @ref cc_ir_ins_formats to match.
 enum cc_ir_opcode
 {
-    /// @brief Load constant `value` in `dst`.
+    /// @brief Load constant `value` in `dst` and clear any remaining bits.
     /// Format: `ldc local dst, u32 value`
     CC_IR_OPCODE_LDC,
     /// @brief Load the `target` local's address in `dst`.
@@ -75,6 +77,7 @@ enum cc_ir_localtypeid
     CC_IR_LOCALTYPEID_BLOCK,
     CC_IR_LOCALTYPEID_FUNC,
     CC_IR_LOCALTYPEID_INT,
+    CC_IR_LOCALTYPEID_PTR,
 };
 
 /// @brief The format of an instruction
@@ -90,7 +93,12 @@ typedef struct cc_ir_local
 {
     /// @brief (optional) Name. May be `NULL`.
     const char* name;
-    /// @brief Variable size in bytes. Zero for other types.
+    /** 
+     * @brief Variable size in bytes. Currently, only integers use this.
+     * 
+     * A pointer size is only known while compiling the IR.
+     * A function or block's size is only known after partial or full compilation of the IR. 
+     */
     uint32_t var_size;
     /// @brief A value from @ref cc_ir_localtypeid
     uint16_t localtypeid;
@@ -176,12 +184,18 @@ cc_ir_block* cc_ir_func_getblock(const cc_ir_func* func, cc_ir_localid localid);
  */
 cc_ir_block* cc_ir_func_insert(cc_ir_func* func, cc_ir_block* prev, const char* name);
 /**
- * @brief Create a new int local in the function
+ * @brief Create a new int-local
  * @param size_bytes Integer size, in bytes
  * @param name (optional) Variable name
  * @return The new local id
  */
 cc_ir_localid cc_ir_func_int(cc_ir_func* func, uint32_t size_bytes, const char* name);
+/**
+ * Create a new pointer-local
+ * @param name (optional) Variable name
+ * @return The new local id
+ */
+cc_ir_localid cc_ir_func_ptr(cc_ir_func* func, const char* name);
 
 /// @brief Load an integer constant: `dst = value`
 void cc_ir_block_ldc(cc_ir_block* block, cc_ir_localid dst, uint32_t value);

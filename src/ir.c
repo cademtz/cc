@@ -90,6 +90,9 @@ cc_ir_block* cc_ir_func_insert(cc_ir_func* func, cc_ir_block* prev, const char* 
 cc_ir_localid cc_ir_func_int(cc_ir_func* func, uint32_t size_bytes, const char* name) {
     return cc_ir_func_local(func, name, size_bytes, CC_IR_LOCALTYPEID_INT);
 }
+cc_ir_localid cc_ir_func_ptr(cc_ir_func* func, const char* name) {
+    return cc_ir_func_local(func, name, 0, CC_IR_LOCALTYPEID_PTR);
+}
 
 /// @brief Append an instruction to the block
 /// @return Instruction pointer (do not save it)
