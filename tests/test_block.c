@@ -1,5 +1,6 @@
 #include "test.h"
 #include <cc/ir.h>
+#include <stdio.h>
 
 static void print_ir_local(const cc_ir_func* func, cc_ir_localid localid)
 {
