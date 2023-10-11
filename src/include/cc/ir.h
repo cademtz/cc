@@ -51,6 +51,9 @@ enum cc_ir_opcode
     /// @brief Return.
     /// Format: `ret`
     CC_IR_OPCODE_RET,
+    /// @brief Return a local value.
+    /// Format: `ret local value`
+    CC_IR_OPCODE_RETL,
 
     /// @brief A hint that `dst` may be either `lhs` or `rhs`.
     /// Format: `phi local dst, local lhs, local rhs`
@@ -211,5 +214,7 @@ void cc_ir_block_sub(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, c
 void cc_ir_block_jnz(cc_ir_block* block, cc_ir_localid addr, cc_ir_localid value);
 /// @brief Return
 void cc_ir_block_ret(cc_ir_block* block);
+/// @brief Return a local value
+void cc_ir_block_retl(cc_ir_block* block, cc_ir_localid value);
 /// @brief Hint at the usage of two locals
 void cc_ir_block_phi(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs);

@@ -11,6 +11,7 @@ const cc_ir_ins_format cc_ir_ins_formats[CC_IR_OPCODE__COUNT] =
     {"sub",     {CC_IR_OPERAND_LOCAL,   CC_IR_OPERAND_LOCAL,  CC_IR_OPERAND_LOCAL}},
     {"jnz",     {0,                     CC_IR_OPERAND_LOCAL,  CC_IR_OPERAND_LOCAL}},
     {"ret",     {0,                     0,                    0}},
+    {"retl",    {0,                     CC_IR_OPERAND_LOCAL,  0}},
     {"phi",     {CC_IR_OPERAND_LOCAL,   CC_IR_OPERAND_LOCAL,  CC_IR_OPERAND_LOCAL}},
 };
 
@@ -147,6 +148,11 @@ void cc_ir_block_jnz(cc_ir_block* block, cc_ir_localid addr, cc_ir_localid value
 }
 void cc_ir_block_ret(cc_ir_block* block) {
     cc_ir_block_ins(block, CC_IR_OPCODE_RET);
+}
+void cc_ir_block_retl(cc_ir_block* block, cc_ir_localid value)
+{
+    cc_ir_ins* ins = cc_ir_block_ins(block, CC_IR_OPCODE_RETL);
+    ins->read.local[0] = value;
 }
 void cc_ir_block_phi(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs) {
     cc_ir_block_binary(block, CC_IR_OPCODE_PHI, dst, lhs, rhs);

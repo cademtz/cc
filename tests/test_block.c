@@ -92,7 +92,7 @@ int test_block(void)
     cc_ir_block_jnz(entry, ptr_end, my_int);                // if (my_int != 0) goto ptr_end
 
     // Program the end block
-    cc_ir_block_ret(end);
+    cc_ir_block_retl(end, my_int);
 
     print_ir_func(&func);
 

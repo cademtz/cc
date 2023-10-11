@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <ctype.h>
 #include <assert.h>
+#include <stdbool.h>
 
 #ifndef CC_LIB
     #define cc_strlen strlen
@@ -58,3 +59,67 @@ void cc_heaprecord_free(cc_heaprecord* record, void* alloc);
 /// @brief Free the last `n` heap allocations
 /// @param n Number of allocations to free, where `n <= num_allocs`
 void cc_heaprecord_pop(cc_heaprecord* record, size_t n);
+
+/// @brief Calculate the 32-bit FNV1-a hash
+uint32_t cc_fnv1a_32(const void* data, size_t size);
+uint32_t cc_fnv1a_u32(uint32_t i);
+static uint32_t cc_fnv1a_i32(int32_t i) { return cc_fnv1a_u32((uint32_t)i); }
+
+/**
+ * @brief A data stream with the ability to read/write integers.
+ * 
+ * Endianness is stream-dependent.
+ * The stream is responsible for converting integers to/from the desired endianness.
+ */
+typedef struct cc_stream
+{
+    /// @brief Destroy the current stream
+    void(*destroy)(struct cc_stream* self);
+    /**
+     * @brief Write bytes until the buffer or stream ends
+     * @param self The current stream
+     * @param data Byte array
+     * @param size Size of byte array
+     * @return Number of bytes written
+     */
+    size_t(*write)(struct cc_stream* self, const uint8_t* data, size_t size);
+    /**
+     * @brief Read bytes until the buffer or stream ends
+     * @param self The current stream
+     * @param buffer Byte buffer
+     * @param size Size of byte buffer
+     * @return Number of bytes read
+     */
+    size_t(*read)(struct cc_stream* self, uint8_t* buffer, size_t size);
+} cc_stream;
+
+typedef struct cc_staticstream
+{
+    cc_stream base;
+    uint8_t* buffer;
+    size_t size;
+    size_t readpos;
+    size_t writepos;
+} cc_staticstream;
+
+typedef struct cc_dynamicstream
+{
+    cc_stream base;
+    uint8_t* buffer;
+    size_t size;
+    size_t cap;
+    size_t readpos;
+    size_t writepos;
+} cc_dynamicstream;
+
+/// @brief Create a stream from a static buffer
+cc_stream* cc_stream_create_static(uint8_t* buffer, size_t size);
+/// @brief Create a growing stream
+cc_stream* cc_stream_create_dynamic(void);
+static void cc_stream_destroy(cc_stream* stream) { stream->destroy(stream); }
+static size_t cc_stream_write(cc_stream* stream, const uint8_t* data, size_t size) {
+    return stream->write(stream, data, size);
+}
+static size_t cc_stream_read(cc_stream* stream, uint8_t* buffer, size_t size) {
+    return stream->read(stream, buffer, size);
+}

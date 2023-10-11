@@ -91,3 +91,112 @@ void cc_heaprecord_pop(cc_heaprecord* record, size_t n)
         free(record->allocs[i]);
     record->num_allocs -= n;
 }
+
+uint32_t cc_fnv1a_32(const void* data, size_t size)
+{
+    const uint32_t FNV_PRIME = 0x1000193;
+    const uint32_t FNV_OFFSET = 0x811c9dc5;
+
+    uint32_t hash = FNV_OFFSET;
+    for (size_t i = 0; i < size; ++i)
+    {
+        hash ^= ((const uint8_t*)data)[i];
+        hash *= FNV_PRIME;
+    }
+    return hash;
+}
+uint32_t cc_fnv1a_u32(uint32_t i) {
+    return cc_fnv1a_32(&i, sizeof(i));
+}
+
+cc_staticstream* cc_staticstream_create(uint8_t* buffer, size_t size);
+void cc_staticstream_destroy(cc_stream* stream);
+size_t cc_staticstream_read(cc_stream* self, uint8_t* buffer, size_t size);
+size_t cc_staticstream_write(cc_stream* self, const uint8_t* data, size_t size);
+
+cc_dynamicstream* cc_dynamicstream_create(void);
+void cc_dynamicstream_destroy(cc_stream* stream);
+size_t cc_dynamicstream_read(cc_stream* self, uint8_t* buffer, size_t size);
+size_t cc_dynamicstream_write(cc_stream* self, const uint8_t* data, size_t size);
+
+cc_stream* cc_stream_create_static(uint8_t* buffer, size_t size) {
+    return &cc_staticstream_create(buffer, size)->base;
+}
+cc_stream* cc_stream_create_dynamic(void) {
+    return &cc_dynamicstream_create()->base;
+}
+
+cc_staticstream* cc_staticstream_create(uint8_t* buffer, size_t size)
+{
+    cc_staticstream* stream = (cc_staticstream*)malloc(sizeof(*stream));
+    memset(stream, 0, sizeof(*stream));
+    stream->buffer = buffer;
+    stream->size = size;
+    stream->base.destroy = &cc_staticstream_destroy;
+    stream->base.read = &cc_staticstream_read;
+    stream->base.write = &cc_staticstream_write;
+    return stream;
+}
+void cc_staticstream_destroy(cc_stream* stream) { free(stream); }
+size_t cc_staticstream_read(cc_stream* self, uint8_t* buffer, size_t size)
+{
+    cc_staticstream* s = (cc_staticstream*)self;
+    size_t limit = s->size - s->readpos;
+    if (size > limit)
+        size = limit;
+    memcpy(buffer, s->buffer + s->readpos, size);
+    s->readpos += size;
+    return size;
+}
+size_t cc_staticstream_write(cc_stream* self, const uint8_t* data, size_t size)
+{
+    cc_staticstream* s = (cc_staticstream*)self;
+    size_t limit = s->size - s->writepos;
+    if (size > limit)
+        size = limit;
+    memcpy(s->buffer + s->writepos, data, size);
+    s->writepos += size;
+    return size;
+}
+
+cc_dynamicstream* cc_dynamicstream_create(void)
+{
+    cc_dynamicstream* stream = (cc_dynamicstream*)malloc(sizeof(*stream));
+    stream->base.destroy = &cc_dynamicstream_destroy;
+    stream->base.read = &cc_dynamicstream_read;
+    stream->base.write = &cc_dynamicstream_write;
+    return stream;
+}
+void cc_dynamicstream_destroy(cc_stream* self)
+{
+    cc_dynamicstream* s = (cc_dynamicstream*)self;
+    free(s->buffer);
+    free(s);
+}
+size_t cc_dynamicstream_read(cc_stream* self, uint8_t* buffer, size_t size)
+{
+    cc_dynamicstream* s = (cc_dynamicstream*)self;
+    size_t limit = s->size - s->readpos;
+    if (size > limit)
+        size = limit;
+    memcpy(buffer, s->buffer + s->readpos, size);
+    s->readpos += size;
+    return size;
+}
+size_t cc_dynamicstream_write(cc_stream* self, const uint8_t* data, size_t size)
+{
+    cc_dynamicstream* s = (cc_dynamicstream*)self;
+    size_t limit = s->size - s->writepos;
+    if (size > limit)
+    {
+        s->size += size;
+        if (s->size > s->cap)
+        {
+            s->cap = s->size;
+            s->buffer = (uint8_t*)realloc(s->buffer, s->cap);
+        }
+    }
+    memcpy(s->buffer + s->writepos, data, size);
+    s->writepos += size;
+    return size;
+}
