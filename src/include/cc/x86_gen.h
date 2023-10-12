@@ -173,7 +173,7 @@ void x86func_ret(x86func* func);
  * This may also be the `/digit` number in the AMD64 manual.
  * @param rm A value from @ref x86_reg, which will be wrapped from 0-7
  */
-static uint8_t x86_modrm(uint8_t mod, uint8_t reg, uint8_t rm)
+static inline uint8_t x86_modrm(uint8_t mod, uint8_t reg, uint8_t rm)
 {
     reg &= 7;
     rm &= 7;
@@ -186,12 +186,19 @@ static uint8_t x86_modrm(uint8_t mod, uint8_t reg, uint8_t rm)
  * A value of 4 ( @ref X86_REG_SP ) indicates no index.
  * @param base A value from @ref x86_reg, which will be wrapped from 0-7
  */
-static uint8_t x86_sib(uint8_t scale, uint8_t index, uint8_t base)
+static inline uint8_t x86_sib(uint8_t scale, uint8_t index, uint8_t base)
 {
     index &= 7;
     base &= 7;
     return base | (index << 3) | (scale << 6);
 }
+/**
+ * @brief Encode a REX byte
+ * @param b Extend ModRM.rm, SIB.base, or opcode.reg (`+r` in the AMD64 manual)
+ * @param x Extend SIB.index
+ */
+//static inline uint8_t x86_rex(bool b, bool x, bool r, bool wide);
+
 /// @brief Make a plain register operand
 static inline x86_regmem x86_reg(uint8_t reg)
 {

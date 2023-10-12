@@ -55,6 +55,35 @@ void x86func_imm64(x86func* func, uint64_t imm)
         dst[i] = (imm >> (i * 8)) & 0xFF;
 }
 
+void x86func_add(x86func* func, x86_regmem dst, x86_regmem src)
+{
+    // dst may not be a constant
+    if (dst.type == X86_REGMEM_CONST)
+        return;
+
+    // At least one side must be direct (as opposed to indirect)
+    bool dst_direct = dst.type == X86_REGMEM_REG || dst.type == X86_REGMEM_CONST;
+    bool src_direct = src.type == X86_REGMEM_REG || src.type == X86_REGMEM_CONST;
+    if (!dst_direct && !src_direct)
+        return;
+    
+    if (dst.type == X86_REGMEM_REG && src.type == X86_REGMEM_REG)
+    {
+        int rex = 0;
+        if (dst.reg >= X86_REG_R8 && dst.reg <= X86_REG_R15)
+            rex = X86_REX_B; // extended r/m register
+        if (src.reg >= X86_REG_R8 && src.reg <= X86_REG_R15)
+            rex = X86_REX_R; // extended r register
+
+        if (rex)
+            x86func_byte(func, X86_REX__REX | rex);
+
+        // ADD reg/mem64, reg64     01 /r 
+        x86func_byte(func, 1);
+        x86func_byte(func, x86_modrm(X86_MOD_DIRECT, src.reg, dst.reg));
+    }
+}
+
 void x86func_ret(x86func* func) {
     x86func_byte(func, 0xC3);
 }

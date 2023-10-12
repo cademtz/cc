@@ -21,7 +21,19 @@ static int equal__code(const x86func* func, size_t block_index, const char* expe
     size_t min_len = end - code;
     if (min_len < expected_len)
         return 0;
-    return memcmp(code, expected, min_len) == 0;
+    int result = memcmp(code, expected, min_len) == 0;
+    if (!result)
+    {
+        printf("Expected x86:  ");
+        for(size_t i = 0; i < min_len; ++i)
+            printf(" %.2X", (uint8_t)expected[i]);
+        printf("\n");
+        printf("Incorrect x86: ");
+        for (size_t i = 0; i < min_len; ++i)
+            printf(" %.2X", code[i]);
+        printf("\n");
+    }
+    return result;
 }
 
 int test_x86(void)
@@ -35,7 +47,15 @@ int test_x86(void)
         x86func_destroy(&func);
     }
     { // Test various operands
+        x86func_create(&func);
 
+        size_t block = x86func_block(&func);
+        x86func_add(&func, x86_reg(X86_REG_C), x86_reg(X86_REG_B)); // add ecx, ebx
+        test_assert("Expected `add ecx, ebx`", equal_code(&func, block, "\x01\xD9"));
+
+        block = x86func_block(&func);
+        x86func_add(&func, x86_reg(X86_REG_R15), x86_reg(X86_REG_B)); // add r15, rbx
+        test_assert("Expected `add r15d, ebx`", equal_code(&func, block, "\x41\x01\xDF"));
     }
     
     return 1;
