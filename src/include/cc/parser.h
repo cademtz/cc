@@ -3,6 +3,11 @@
 #include "ast.h"
 #include "lib.h"
 
+/**
+ * @file
+ * @brief The C syntax-tree parser
+ */
+
 typedef struct cc_parser_savestate
 {
     const cc_token* next;

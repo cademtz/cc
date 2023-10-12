@@ -1,5 +1,10 @@
 #pragma once
 
+/**
+ * @file
+ * @brief Structs and defines for the C syntax tree
+ */
+
 typedef struct cc_token cc_token;
 
 enum cc_ast_typeflag

@@ -7,7 +7,17 @@
 #include <assert.h>
 #include <stdbool.h>
 
-#ifndef CC_LIB
+/**
+ * @file
+ * @brief Configurable C libraries used throughout the project.
+ * 
+ * To use a wider string type, define the `CC_STR` macro function.
+ * 
+ * For example: `CC_STR(x) L##x` will turn all the string literals into wide-char.
+ * Then redefine `cc_strlen`, `cc_strncmp`, etc... to use the correct wide-char string functions.
+ */
+
+#ifndef CC_STR
     #define cc_strlen strlen
     #define cc_isdigit isdigit
     #define cc_isspace isspace

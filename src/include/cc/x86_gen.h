@@ -1,6 +1,13 @@
 #pragma once
 #include "lib.h"
 
+/**
+ * @file
+ * @brief An x86/AMD64 assembler.
+ * 
+ * Instead of assembling text, this provides an API to generate each instruction.
+ */
+
 /// @brief x86 execution mode
 enum x86_mode
 {
@@ -78,24 +85,37 @@ enum x86_rex
     X86_REX__REX = 0x40,
 };
 
+enum x86_regmem_type
+{
+    /// @brief A register
+    X86_REGMEM_REG,
+    /// @brief A de-referenced register, with optional scale, index, and offset
+    X86_REGMEM_MEM,
+    /// @brief A de-referenced memory offset
+    X86_REGMEM_OFFSET,
+    /// @brief An constant value
+    X86_REGMEM_CONST,
+};
+
 /// @brief A high-level register/memory operand representation
-typedef struct x86regmem
+typedef struct x86_regmem
 {
     /// @brief A value from @ref x86_reg.
     /// This may be the base of a memory operand.
     uint8_t reg;
-    /// @brief If true, then the scale, index, and offset are used to dereference `reg`
-    uint8_t is_memory;
+    /// @brief A value of @ref x86_regmem_type
+    uint8_t type;
     /// @brief A value from @ref x86_sib_scale
     uint8_t scale;
     /// @brief A value from @ref x86_reg.
     /// @ref X86_REG_SP means no index will be used.
     uint8_t index;
+    /// @brief A memory offset or const value, depending on @ref type
     int32_t offset;
-} x86_binop;
+} x86_regmem;
 
-/// @brief The properties of an x86 register
-typedef struct x86reg
+/// @brief A description of an x86 register, according to an ABI
+typedef struct x86_abi_reg
 {
     const char* name;
     /// @brief Register size, in bytes
@@ -132,7 +152,8 @@ void x86func_create(x86func* func);
 void x86func_destroy(x86func* func);
 
 /// @brief Begin a new block in the function. If there is no code, this will have no effect.
-void x86func_block(x86func* func);
+/// @return The new block's index
+size_t x86func_block(x86func* func);
 /// @brief Emit one byte
 void x86func_byte(x86func* func, uint8_t byte);
 /// @brief Emit a 16-bit immediate value
@@ -142,7 +163,7 @@ void x86func_imm32(x86func* func, uint32_t imm);
 /// @brief Emit a 64-bit immediate value
 void x86func_imm64(x86func* func, uint64_t imm);
 
-void x86func_add(x86func* func, x86regmem dst, x86regmem src);
+void x86func_add(x86func* func, x86_regmem dst, x86_regmem src);
 void x86func_ret(x86func* func);
 
 /**
@@ -170,4 +191,45 @@ static uint8_t x86_sib(uint8_t scale, uint8_t index, uint8_t base)
     index &= 7;
     base &= 7;
     return base | (index << 3) | (scale << 6);
+}
+/// @brief Make a plain register operand
+static inline x86_regmem x86_reg(uint8_t reg)
+{
+    x86_regmem rm;
+    memset(&rm, 0, sizeof(rm));
+    rm.type = X86_REGMEM_REG;
+    rm.reg = reg;
+    return rm;
+}
+/// @brief Make a de-referenced register operand
+static inline x86_regmem x86_deref(uint8_t reg)
+{
+    x86_regmem rm;
+    memset(&rm, 0, sizeof(rm));
+    rm.type = X86_REGMEM_MEM;
+    rm.reg = reg;
+    rm.scale = X86_SIB_SCALE_1;
+    rm.index = X86_REG_SP; // SP means no index will be used
+    return rm;
+}
+/// @brief Make an indexed register operand: `[scale*index_reg + reg + offset]`
+static inline x86_regmem x86_index(uint8_t reg, uint8_t index_reg, uint8_t scale, int32_t offset)
+{
+    x86_regmem rm;
+    memset(&rm, 0, sizeof(rm));
+    rm.type = X86_REGMEM_MEM;
+    rm.reg = reg;
+    rm.index = index_reg;
+    rm.scale = scale;
+    rm.offset = offset;
+    return rm;
+}
+/// @brief Make a de-referenced data-segment address operand: `ds:offset`
+static inline x86_regmem x86_offset(int32_t offset)
+{
+    x86_regmem rm;
+    memset(&rm, 0, sizeof(rm));
+    rm.type = X86_REGMEM_OFFSET;
+    rm.offset = offset;
+    return rm;
 }
