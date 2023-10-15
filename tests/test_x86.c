@@ -19,13 +19,11 @@ static int equal__code(const x86func* func, size_t block_index, const char* expe
         end = func->code + func->blocks[block_index + 1];
 
     size_t min_len = end - code;
-    if (min_len < expected_len)
-        return 0;
-    int result = memcmp(code, expected, min_len) == 0;
+    int result = min_len >= expected_len && memcmp(code, expected, min_len) == 0;
     if (!result)
     {
         printf("Expected x86:  ");
-        for(size_t i = 0; i < min_len; ++i)
+        for(size_t i = 0; i < expected_len; ++i)
             printf(" %.2X", (uint8_t)expected[i]);
         printf("\n");
         printf("Incorrect x86: ");
@@ -50,12 +48,32 @@ int test_x86(void)
         x86func_create(&func);
 
         size_t block = x86func_block(&func);
-        x86func_add(&func, x86_reg(X86_REG_C), x86_reg(X86_REG_B)); // add ecx, ebx
+        x86func_add(&func, x86_reg(X86_REG_C), x86_reg(X86_REG_B));
         test_assert("Expected `add ecx, ebx`", equal_code(&func, block, "\x01\xD9"));
 
         block = x86func_block(&func);
-        x86func_add(&func, x86_reg(X86_REG_R15), x86_reg(X86_REG_B)); // add r15, rbx
+        x86func_add(&func, x86_reg(X86_REG_R15), x86_reg(X86_REG_B));
         test_assert("Expected `add r15d, ebx`", equal_code(&func, block, "\x41\x01\xDF"));
+
+        block = x86func_block(&func);
+        x86func_add(&func, x86_reg(X86_REG_B), x86_deref(X86_REG_R15));
+        test_assert("Expected `add ebx, DWORD PTR [r15]`", equal_code(&func, block, "\x41\x03\x1F"));
+        
+        block = x86func_block(&func);
+        x86func_add(&func, x86_deref(X86_REG_SP), x86_reg(X86_REG_C));
+        test_assert("Expected `add DWORD PTR [esp], ecx`", equal_code(&func, block, "\x01\x0C\x24"));
+        
+        block = x86func_block(&func);
+        x86func_add(&func, x86_deref(X86_REG_BP), x86_reg(X86_REG_C));
+        test_assert("Expected `add DWORD PTR [ebp+0x0], ecx`", equal_code(&func, block, "\x01\x4D\x00"));
+        
+        block = x86func_block(&func);
+        x86func_add(&func, x86_index(X86_REG_BP, X86_REG_A, X86_SIB_SCALE_4, -0x20), x86_reg(X86_REG_C));
+        test_assert("Expected `add DWORD PTR [ebp+eax*4-0x20], ecx`", equal_code(&func, block, "\x01\x4C\x85\xE0"));
+        
+        block = x86func_block(&func);
+        x86func_add(&func, x86_index(X86_REG_BP, X86_REG_A, X86_SIB_SCALE_4, -0x400), x86_reg(X86_REG_C));
+        test_assert("Expected `add DWORD PTR [ebp+eax*4-0x400], ecx`", equal_code(&func, block, "\x01\x8C\x85\x00\xFC\xFF\xFF"));
     }
     
     return 1;

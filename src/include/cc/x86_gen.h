@@ -110,7 +110,12 @@ typedef struct x86_regmem
     /// @brief A value from @ref x86_reg.
     /// @ref X86_REG_SP means no index will be used.
     uint8_t index;
-    /// @brief A memory offset or const value, depending on @ref type
+    /**
+     * @brief A memory offset or const value, depending on @ref type.
+     * 
+     * - type = @ref X86_REGMEM_CONST: This field is a const value
+     * - type = @ref X86_REGMEM_OFFSET: This field is a memory offset
+     */
     int32_t offset;
 } x86_regmem;
 
