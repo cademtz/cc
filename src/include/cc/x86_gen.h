@@ -160,7 +160,7 @@ void x86func_destroy(x86func* func);
 /// @return The new block's index
 size_t x86func_block(x86func* func);
 /// @brief Emit one byte
-void x86func_byte(x86func* func, uint8_t byte);
+void x86func_imm8(x86func* func, uint8_t byte);
 /// @brief Emit a 16-bit immediate value
 void x86func_imm16(x86func* func, uint16_t imm);
 /// @brief Emit a 32-bit immediate value
@@ -197,12 +197,6 @@ static inline uint8_t x86_sib(uint8_t scale, uint8_t index, uint8_t base)
     base &= 7;
     return base | (index << 3) | (scale << 6);
 }
-/**
- * @brief Encode a REX byte
- * @param b Extend ModRM.rm, SIB.base, or opcode.reg (`+r` in the AMD64 manual)
- * @param x Extend SIB.index
- */
-//static inline uint8_t x86_rex(bool b, bool x, bool r, bool wide);
 
 /// @brief Make a plain register operand
 static inline x86_regmem x86_reg(uint8_t reg)

@@ -87,11 +87,11 @@ static bool x86func_regmem(x86func* func, x86_regmem lhs, x86_regmem rhs)
         modrm = x86_modrm(X86_MOD_DIRECT, rhs.reg, lhs.reg);
     }
     
-    x86func_byte(func, modrm);
+    x86func_imm8(func, modrm);
     if (use_sib)
-        x86func_byte(func, sib);
+        x86func_imm8(func, sib);
     if (imm_size == 1)
-        x86func_byte(func, (uint8_t)imm);
+        x86func_imm8(func, (uint8_t)imm);
     else if (imm_size == 4)
         x86func_imm32(func, imm);
     return true;
@@ -137,7 +137,7 @@ static bool x86func_rex_binary(x86func* func, x86_regmem lhs, x86_regmem rhs)
     }
 
     if (rex)
-        x86func_byte(func, rex | X86_REX__REX);
+        x86func_imm8(func, rex | X86_REX__REX);
     return true;
 }
 
@@ -164,7 +164,7 @@ size_t x86func_block(x86func* func)
     return func->num_blocks - 1;
 }
 
-void x86func_byte(x86func* func, uint8_t byte) {
+void x86func_imm8(x86func* func, uint8_t byte) {
     *x86func_append(func, 1) = byte;
 }
 void x86func_imm16(x86func* func, uint16_t imm)
@@ -191,57 +191,37 @@ void x86func_add(x86func* func, x86_regmem dst, x86_regmem src)
     // dst may not be a constant
     if (dst.type == X86_REGMEM_CONST)
         return;
-
-    bool dst_direct = dst.type == X86_REGMEM_REG || dst.type == X86_REGMEM_CONST;
-    bool src_direct = src.type == X86_REGMEM_REG || src.type == X86_REGMEM_CONST;
-
-    // There may be one indirect operand at most. It cannot be both.
-    if (!dst_direct && !src_direct)
+    
+    if (!x86func_rex_binary(func, dst, src))
         return;
-
-    const x86_regmem* indirect = NULL;
-    const x86_regmem* direct = NULL;
-
-    if (!dst_direct)
-        indirect = &dst, direct = &src;
-    else if (!src_direct)
-        indirect = &src, direct = &dst;
     
-    x86func_rex_binary(func, dst, src);
-    
-    // Add a reg/mem operand
-    if (src.type == X86_REGMEM_REG || src.type == X86_REGMEM_MEM)
-    {
-        // Side effect: With no indirection, dst is placed in r/m by default.
-        // Always use src_direct first.
-        if (src_direct)
-        {
-            x86func_byte(func, 1); // ADD reg/mem64, reg64      01 /r
-            x86func_regmem(func, dst, src);
-        }
-        else
-        {
-            x86func_byte(func, 3); // ADD reg64, reg/mem64      03 /r
-            x86func_regmem(func, dst, src);
-        }
-    }
-    else // Add a constant value operand
+    if (src.type == X86_REGMEM_CONST) // Add a constant value
     {
         if (src.offset < INT8_MIN || src.offset > INT8_MAX)
         {
-            x86func_byte(func, 0x81);
+            x86func_imm8(func, 0x81);
             x86func_regmem(func, dst, x86_reg(0));
             x86func_imm32(func, (uint32_t)src.offset);
         }
         else
         {
-            x86func_byte(func, 0x83);
+            x86func_imm8(func, 0x83);
             x86func_regmem(func, dst, x86_reg(0));
-            x86func_byte(func, (uint8_t)src.offset);
+            x86func_imm8(func, (uint8_t)src.offset);
         }
+    }
+    else if (src.type == X86_REGMEM_REG) // Add a register
+    {
+        x86func_imm8(func, 1); // ADD reg/mem64, reg64      01 /r
+        x86func_regmem(func, dst, src);
+    }
+    else // Add a value in memory
+    {
+        x86func_imm8(func, 3); // ADD reg64, reg/mem64      03 /r
+        x86func_regmem(func, dst, src);
     }
 }
 
 void x86func_ret(x86func* func) {
-    x86func_byte(func, 0xC3);
+    x86func_imm8(func, 0xC3);
 }
