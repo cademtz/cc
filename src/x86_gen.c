@@ -77,6 +77,8 @@ static bool x86func_regmem(x86func* func, x86_regmem lhs, x86_regmem rhs)
             // In protected mode, this will emit ds:offset32
             // In long mode, this will emit [RIP+offset32]
             modrm = x86_modrm(X86_MOD_DISP0, 0, X86_REG_BP);
+            imm_size = 4;
+            imm = (uint32_t)indirect->offset;
         }
     }
     else // No indirection

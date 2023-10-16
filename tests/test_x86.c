@@ -80,8 +80,8 @@ int test_x86(void)
         test_assert("Expected `add DWORD PTR [eax+ecx], 0x20`", equal_code(&func, block, "\x83\x04\x08\x20"));
         
         block = x86func_block(&func);
-        x86func_add(&func, x86_index(X86_REG_A, X86_REG_C, X86_SIB_SCALE_1, 0), x86_const(0x400));
-        test_assert("Expected `add DWORD PTR [eax+ecx], 0x20`", equal_code(&func, block, "\x81\x04\x08\x00\x04\x00\x00"));
+        x86func_add(&func, x86_offset(0x44444444), x86_const(0x33333333));
+        test_assert("Expected `add DWORD PTR [0x44444444], 0x33333333`", equal_code(&func, block, "\x81\x05\x44\x44\x44\x44\x33\x33\x33\x33"));
     }
     
     return 1;
