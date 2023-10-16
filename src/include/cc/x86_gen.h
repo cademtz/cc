@@ -236,12 +236,26 @@ static inline x86_regmem x86_index(uint8_t reg, uint8_t index_reg, uint8_t scale
     rm.offset = offset;
     return rm;
 }
-/// @brief Make a de-referenced data-segment address operand: `ds:offset`
+/**
+ * @brief Make a de-referenced address operand.
+ * 
+ * In long mode, this becomes a sign-extended offset where `[RIP+offset]`.
+ * Otherwise, this becomes `ds:offset`.
+ */
 static inline x86_regmem x86_offset(int32_t offset)
 {
     x86_regmem rm;
     memset(&rm, 0, sizeof(rm));
     rm.type = X86_REGMEM_OFFSET;
     rm.offset = offset;
+    return rm;
+}
+/// @brief Make a sign-extended integer operand
+static inline x86_regmem x86_const(int32_t value)
+{
+    x86_regmem rm;
+    memset(&rm, 0, sizeof(rm));
+    rm.type = X86_REGMEM_CONST;
+    rm.offset = value;
     return rm;
 }

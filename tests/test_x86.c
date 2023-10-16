@@ -74,6 +74,14 @@ int test_x86(void)
         block = x86func_block(&func);
         x86func_add(&func, x86_index(X86_REG_BP, X86_REG_A, X86_SIB_SCALE_4, -0x400), x86_reg(X86_REG_C));
         test_assert("Expected `add DWORD PTR [ebp+eax*4-0x400], ecx`", equal_code(&func, block, "\x01\x8C\x85\x00\xFC\xFF\xFF"));
+        
+        block = x86func_block(&func);
+        x86func_add(&func, x86_index(X86_REG_A, X86_REG_C, X86_SIB_SCALE_1, 0), x86_const(0x20));
+        test_assert("Expected `add DWORD PTR [eax+ecx], 0x20`", equal_code(&func, block, "\x83\x04\x08\x20"));
+        
+        block = x86func_block(&func);
+        x86func_add(&func, x86_index(X86_REG_A, X86_REG_C, X86_SIB_SCALE_1, 0), x86_const(0x400));
+        test_assert("Expected `add DWORD PTR [eax+ecx], 0x20`", equal_code(&func, block, "\x81\x04\x08\x00\x04\x00\x00"));
     }
     
     return 1;
