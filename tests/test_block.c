@@ -73,23 +73,21 @@ static void print_ir_func(const cc_ir_func* func)
 int test_block(void)
 {
     cc_ir_func func;
-    cc_ir_func_create(&func, "my_func");
+    cc_ir_func_create(&func, CC_STR("my_func"));
 
     cc_ir_block* entry = func.entry_block;
-    cc_ir_block* end = cc_ir_func_insert(&func, entry, "end");
+    cc_ir_block* end = cc_ir_func_insert(&func, entry, CC_STR("end"));
 
     // Create some local variables
-    cc_ir_localid my_int = cc_ir_func_int(&func, 4, "my_int");
-    cc_ir_localid negative_int = cc_ir_func_int(&func, 4, "negative_int");
-    cc_ir_localid ptr_end = cc_ir_func_ptr(&func, "end_ptr");
+    cc_ir_localid my_int = cc_ir_func_int(&func, 4, CC_STR("my_int"));
+    cc_ir_localid negative_int = cc_ir_func_int(&func, 4, CC_STR("negative_int"));
 
     // Program the entry block
-    cc_ir_block_ldla(entry, ptr_end, end->localid);         // ptr_end = &end
     cc_ir_block_ldc(entry, my_int, 9);                      // my_int = 9
     cc_ir_block_ldc(entry, negative_int, (uint32_t)-4);     // negative_int = -4
     cc_ir_block_add(entry, my_int, my_int, negative_int);   // my_int = my_int + negative_int
     cc_ir_block_add(entry, my_int, my_int, negative_int);   // my_int = my_int + negative_int
-    cc_ir_block_jnz(entry, ptr_end, my_int);                // if (my_int != 0) goto ptr_end
+    cc_ir_block_jnz(entry, end, my_int);                    // if (my_int != 0) goto ptr_end
 
     // Program the end block
     cc_ir_block_retl(end, my_int);

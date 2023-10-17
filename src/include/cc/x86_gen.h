@@ -203,11 +203,11 @@ void x86func_cmp(x86func* func, uint8_t opsize, x86_regmem lhs, x86_regmem rhs);
 /// @brief Emit: `jz offset`
 void x86func_jz(x86func* func, int32_t offset);
 /// @brief Alias for @ref jz
-static inline x86func_je(x86func* func, int32_t offset) { x86func_jz(func, offset); }
+static inline void x86func_je(x86func* func, int32_t offset) { x86func_jz(func, offset); }
 /// @brief Emit: `jnz offset`
 void x86func_jnz(x86func* func, int32_t offset);
 /// @brief Alias for @ref jnz
-static inline x86func_jne(x86func* func, int32_t offset) { x86func_jnz(func, offset); }
+static inline void x86func_jne(x86func* func, int32_t offset) { x86func_jnz(func, offset); }
 /// @brief Emit: `ret`
 void x86func_ret(x86func* func);
 

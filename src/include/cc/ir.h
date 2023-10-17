@@ -45,8 +45,8 @@ enum cc_ir_opcode
     /// Format: `add local dst, local lhs, local rhs`
     CC_IR_OPCODE_SUB,
 
-    /// @brief Jump to `addr` if `value` is not zero.
-    /// Format: `jnz local addr, local value`
+    /// @brief Jump to `block` if `value` is not zero.
+    /// Format: `jnz local block, local value`
     CC_IR_OPCODE_JNZ,
     /// @brief Return.
     /// Format: `ret`
@@ -94,8 +94,12 @@ typedef struct cc_ir_ins_format
 /// @brief A function's local variable
 typedef struct cc_ir_local
 {
-    /// @brief (optional) Name. May be `NULL`.
-    const char* name;
+    /**
+     * @brief (optional) Name. May be `NULL`.
+     * 
+     * Pointer must be freed.
+     */
+    char* name;
     /** 
      * @brief Variable size in bytes. Currently, only integers use this.
      * 
@@ -210,8 +214,8 @@ void cc_ir_block_ldls(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid src);
 void cc_ir_block_add(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs);
 /// @brief Subtract two locals: `dst = lhs - rhs`
 void cc_ir_block_sub(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs);
-/// @brief Jump if not zero: `if (value != 0) goto addr`
-void cc_ir_block_jnz(cc_ir_block* block, cc_ir_localid addr, cc_ir_localid value);
+/// @brief Jump if not zero: `if (value != 0) goto block`
+void cc_ir_block_jnz(cc_ir_block* block, const cc_ir_block* dst, cc_ir_localid value);
 /// @brief Return
 void cc_ir_block_ret(cc_ir_block* block);
 /// @brief Return a local value

@@ -20,10 +20,18 @@ static cc_ir_localid cc_ir_func_local(cc_ir_func* func, const char* name, uint32
 {
     ++func->num_locals;
     func->locals = (cc_ir_local*)realloc(func->locals, func->num_locals * sizeof(func->locals[0]));
+
+    char* name_copy = NULL;
+    if (name && name[0])
+    {
+        size_t len = strlen(name);
+        name_copy = (char*)malloc(len + 1);
+        memcpy(name_copy, name, len + 1);
+    }
     
     cc_ir_local* local = &func->locals[func->num_locals - 1];
     local->localid = func->_next_localid++;
-    local->name = name;
+    local->name = name_copy;
     local->var_size = var_size;
     local->localtypeid = localtypeid;
     return local->localid;
@@ -54,6 +62,8 @@ void cc_ir_func_destroy(cc_ir_func* func)
         block = next_block;
     }
     
+    for (size_t i = 0; i < func->num_locals; ++i)
+        free(func->locals[i].name);
     free(func->locals);
     memset(func, 0, sizeof(*func));
 }
@@ -140,10 +150,10 @@ void cc_ir_block_add(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, c
 void cc_ir_block_sub(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs) {
     cc_ir_block_binary(block, CC_IR_OPCODE_SUB, dst, lhs, rhs);
 }
-void cc_ir_block_jnz(cc_ir_block* block, cc_ir_localid addr, cc_ir_localid value)
+void cc_ir_block_jnz(cc_ir_block* block, const cc_ir_block* dst, cc_ir_localid value)
 {
     cc_ir_ins* ins = cc_ir_block_ins(block, CC_IR_OPCODE_JNZ);
-    ins->read.local[0] = addr;
+    ins->read.local[0] = dst->localid;
     ins->read.local[1] = value;
 }
 void cc_ir_block_ret(cc_ir_block* block) {
