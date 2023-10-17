@@ -125,7 +125,7 @@ typedef struct x86_regmem
     uint8_t type;
     /// @brief A value from @ref x86_sib_scale
     uint8_t scale;
-    /// @brief A value from @ref x86_reg.
+    /// @brief A value from @ref x86_reg_enum.
     /// @ref X86_REG_SP means no index will be used.
     uint8_t index;
     /**
@@ -192,6 +192,12 @@ void x86func_imm64(x86func* func, uint64_t imm);
 /// @brief Emit: `add dst, src`
 /// @param opsize A value from @ref x86_opsize
 void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
+/// @brief Emit: `sub dst, src`
+/// @param opsize A value from @ref x86_opsize
+void x86func_sub(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
+/// @brief Emit: `mov dst, src`
+/// @param opsize A value from @ref x86_opsize
+void x86func_mov(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
 /// @brief Emit: `ret`
 void x86func_ret(x86func* func);
 
@@ -211,9 +217,9 @@ static inline uint8_t x86_modrm(uint8_t mod, uint8_t reg, uint8_t rm)
 /**
  * @brief Encode an SIB byte
  * @param scale A value from @ref x86_sib_scale
- * @param index A value from @ref x86_reg, which will be wrapped from 0-7.
+ * @param index A value from @ref x86_reg_enum, which will be wrapped from 0-7.
  * A value of 4 ( @ref X86_REG_SP ) indicates no index.
- * @param base A value from @ref x86_reg, which will be wrapped from 0-7
+ * @param base A value from @ref x86_reg_enum, which will be wrapped from 0-7
  */
 static inline uint8_t x86_sib(uint8_t scale, uint8_t index, uint8_t base)
 {

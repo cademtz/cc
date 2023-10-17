@@ -3,7 +3,7 @@
 
 #define equal_code(func, block_index, expected) equal__code(func, block_index, expected, sizeof(expected) - 1)
 
-/// @brief Check if an x86 block starts with the full sequence of bytes in `expected`
+/// @brief Check if an x86 block contains the exact sequence of bytes in `expected`
 /// @param block_index The block index, or `(size_t)-1` for the last block
 /// @param expected The expected x86 code
 /// @param expected_len Length of expected code
@@ -19,7 +19,7 @@ static int equal__code(const x86func* func, size_t block_index, const char* expe
         end = func->code + func->blocks[block_index + 1];
 
     size_t min_len = end - code;
-    int result = min_len >= expected_len && memcmp(code, expected, min_len) == 0;
+    int result = min_len == expected_len && memcmp(code, expected, min_len) == 0;
     if (!result)
     {
         printf("Expected x86:  ");
@@ -93,6 +93,10 @@ int test_x86(void)
         size_t block = x86func_block(&func);
         x86func_add(&func, X86_OPSIZE_BYTE, x86_reg(X86_REG_C), x86_const(0x11));
         test_assert("Expected `add cl, 0x11`", equal_code(&func, block, "\x80\xC1\x11"));
+        
+        block = x86func_block(&func);
+        x86func_add(&func, X86_OPSIZE_BYTE, x86_reg(X86_REG_C), x86_reg(X86_REG_A));
+        test_assert("Expected `add cl, al`", equal_code(&func, block, "\x00\xC1"));
 
         block = x86func_block(&func);
         x86func_add(&func, X86_OPSIZE_BYTE, x86_deref(X86_REG_C), x86_const(0x11));
@@ -109,8 +113,8 @@ int test_x86(void)
         // word size
 
         block = x86func_block(&func);
-        x86func_add(&func, X86_OPSIZE_WORD, x86_reg(X86_REG_C), x86_const(0x11));
-        test_assert("Expected `add cx, 0x11`", equal_code(&func, block, "\x66\x83\xC1\x11"));
+        x86func_add(&func, X86_OPSIZE_WORD, x86_reg(X86_REG_C), x86_const(0x1122));
+        test_assert("Expected `add cx, 0x1122`", equal_code(&func, block, "\x66\x81\xC1\x22\x11"));
 
         block = x86func_block(&func);
         x86func_add(&func, X86_OPSIZE_WORD, x86_deref(X86_REG_C), x86_const(0x11));
@@ -141,6 +145,51 @@ int test_x86(void)
         block = x86func_block(&func);
         x86func_add(&func, X86_OPSIZE_QWORD, x86_reg(X86_REG_C), x86_deref(X86_REG_A));
         test_assert("Expected `add rcx, QWORD PTR [rax]`", equal_code(&func, block, "\x48\x03\x08"));
+
+        x86func_destroy(&func);
+    }
+    { // Test mov instruction with various operands and operand sizes
+        x86func_create(&func, X86_MODE_LONG);
+
+        // dword size (default)
+
+        size_t block = x86func_block(&func);
+        x86func_mov(&func, 0, x86_deref(X86_REG_C), x86_reg(X86_REG_B));
+        test_assert("Expected `mov DWORD PTR [rcx], ebx", equal_code(&func, block, "\x89\x19"));
+
+        block = x86func_block(&func);
+        x86func_mov(&func, 0, x86_reg(X86_REG_C), x86_deref(X86_REG_B));
+        test_assert("Expected `mov ecx, DWORD PTR [rbx]", equal_code(&func, block, "\x8B\x0B"));
+
+        block = x86func_block(&func);
+        x86func_mov(&func, 0, x86_deref(X86_REG_C), x86_const(0x11));
+        test_assert("Expected `mov DWORD PTR [rcx], 0x11", equal_code(&func, block, "\xC7\x01\x11\x00\x00\x00"));
+
+        // byte size
+
+        block = x86func_block(&func);
+        x86func_mov(&func, X86_OPSIZE_BYTE, x86_deref(X86_REG_C), x86_reg(X86_REG_B));
+        test_assert("Expected `mov BYTE PTR [rcx], bl", equal_code(&func, block, "\x88\x19"));
+
+        block = x86func_block(&func);
+        x86func_mov(&func, X86_OPSIZE_BYTE, x86_reg(X86_REG_C), x86_deref(X86_REG_B));
+        test_assert("Expected `mov cl, BYTE PTR [rbx]", equal_code(&func, block, "\x8A\x0B"));
+
+        block = x86func_block(&func);
+        x86func_mov(&func, X86_OPSIZE_BYTE, x86_deref(X86_REG_C), x86_const(0x11));
+        test_assert("Expected `mov BYTE PTR [rcx], 0x11", equal_code(&func, block, "\xC6\x01\x11"));
+
+        // word size
+
+        block = x86func_block(&func);
+        x86func_mov(&func, X86_OPSIZE_WORD, x86_deref(X86_REG_C), x86_const(0x11));
+        test_assert("Expected `mov WORD PTR [rcx], 0x11", equal_code(&func, block, "\x66\xC7\x01\x11\x00"));
+
+        // qword size
+
+        block = x86func_block(&func);
+        x86func_mov(&func, X86_OPSIZE_QWORD, x86_deref(X86_REG_C), x86_const(0x11));
+        test_assert("Expected `mov QWORD PTR [rcx], 0x11", equal_code(&func, block, "\x48\xC7\x01\x11\x00\x00\x00"));
 
         x86func_destroy(&func);
     }

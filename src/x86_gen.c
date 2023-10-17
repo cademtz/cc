@@ -234,7 +234,10 @@ void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
         {
             x86func_imm8(func, 0x81);
             x86func_regmem(func, dst, x86_reg(0));
-            x86func_imm32(func, (uint32_t)src.offset);
+            if (opsize == X86_OPSIZE_WORD)
+                x86func_imm16(func, (uint16_t)src.offset);
+            else
+                x86func_imm32(func, (uint32_t)src.offset);
         }
         else
         {
@@ -251,6 +254,86 @@ void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
     else // Add a value in memory
     {
         x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 2 : 3); // ADD reg64, reg/mem64      03 /r
+        x86func_regmem(func, dst, src);
+    }
+}
+
+void x86func_sub(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
+{
+    if (dst.type == X86_REGMEM_CONST)
+        return;
+    
+    if (!x86func_rex_binary(func, opsize, dst, src))
+        return;
+    
+    if (src.type == X86_REGMEM_CONST)
+    {
+        if (opsize == X86_OPSIZE_BYTE)
+        {
+            x86func_imm8(func, 0x80);
+            x86func_regmem(func, dst, x86_reg(5));
+            x86func_imm8(func, (uint8_t)src.offset);
+        }
+        else if (src.offset < INT8_MIN || src.offset > INT8_MAX)
+        {
+            x86func_imm8(func, 0x81);
+            x86func_regmem(func, dst, x86_reg(5));
+            if (opsize == X86_OPSIZE_WORD)
+                x86func_imm16(func, (uint16_t)src.offset);
+            else
+                x86func_imm32(func, (uint32_t)src.offset);
+        }
+        else
+        {
+            x86func_imm8(func, 0x83);
+            x86func_regmem(func, dst, x86_reg(5));
+            x86func_imm8(func, (uint8_t)src.offset);
+        }
+    }
+    else if (src.type == X86_REGMEM_REG)
+    {
+        x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0x28 : 0x29);
+        x86func_regmem(func, dst, src);
+    }
+    else
+    {
+        x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0x2A : 0x2B);
+        x86func_regmem(func, dst, src);
+    }
+}
+
+void x86func_mov(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
+{
+    if (!x86func_rex_binary(func, opsize, dst, src))
+        return;
+
+    if (src.type == X86_REGMEM_CONST)
+    {
+        // TODO: Use the shorter opcodes `0xB0 +r` and `0xB8 +r` for direct registers
+        if (opsize == X86_OPSIZE_BYTE)
+        {
+            x86func_imm8(func, 0xC6);
+            x86func_regmem(func, dst, x86_reg(0));
+            x86func_imm8(func, (uint8_t)src.offset);
+        }
+        else
+        {
+            x86func_imm8(func, 0xC7);
+            x86func_regmem(func, dst, x86_reg(0));
+            if (opsize == X86_OPSIZE_WORD)
+                x86func_imm16(func, (uint16_t)src.offset);
+            else
+                x86func_imm32(func, (uint32_t)src.offset);
+        }
+    }
+    else if (src.type == X86_REGMEM_REG)
+    {
+        x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0x88 : 0x89);
+        x86func_regmem(func, dst, src);
+    }
+    else
+    {
+        x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0x8A : 0x8B);
         x86func_regmem(func, dst, src);
     }
 }
