@@ -234,7 +234,7 @@ void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
         {
             x86func_imm8(func, 0x81);
             x86func_regmem(func, dst, x86_reg(0));
-            if (opsize == X86_OPSIZE_WORD)
+            if (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD)
                 x86func_imm16(func, (uint16_t)src.offset);
             else
                 x86func_imm32(func, (uint32_t)src.offset);
@@ -278,7 +278,7 @@ void x86func_sub(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
         {
             x86func_imm8(func, 0x81);
             x86func_regmem(func, dst, x86_reg(5));
-            if (opsize == X86_OPSIZE_WORD)
+            if (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD)
                 x86func_imm16(func, (uint16_t)src.offset);
             else
                 x86func_imm32(func, (uint32_t)src.offset);
@@ -320,7 +320,7 @@ void x86func_mov(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
         {
             x86func_imm8(func, 0xC7);
             x86func_regmem(func, dst, x86_reg(0));
-            if (opsize == X86_OPSIZE_WORD)
+            if (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD)
                 x86func_imm16(func, (uint16_t)src.offset);
             else
                 x86func_imm32(func, (uint32_t)src.offset);
@@ -335,6 +335,42 @@ void x86func_mov(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
     {
         x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0x8A : 0x8B);
         x86func_regmem(func, dst, src);
+    }
+}
+
+void x86func_jz(x86func* func, int32_t offset)
+{
+    if (offset < INT8_MIN || offset > INT8_MAX)
+    {
+        x86func_imm8(func, 0x0F);
+        x86func_imm8(func, 0x84);
+        if (func->mode >= X86_MODE_REAL)
+            x86func_imm32(func, (uint32_t)offset);
+        else
+            x86func_imm16(func, (uint16_t)offset);
+    }
+    else
+    {
+        x86func_imm8(func, 0x74);
+        x86func_imm8(func, (uint8_t)offset);
+    }
+}
+
+void x86func_jnz(x86func* func, int32_t offset)
+{
+    if (offset < INT8_MIN || offset > INT8_MAX)
+    {
+        x86func_imm8(func, 0x0F);
+        x86func_imm8(func, 0x85);
+        if (func->mode >= X86_MODE_REAL)
+            x86func_imm32(func, (uint32_t)offset);
+        else
+            x86func_imm16(func, (uint16_t)offset);
+    }
+    else
+    {
+        x86func_imm8(func, 0x75);
+        x86func_imm8(func, (uint8_t)offset);
     }
 }
 

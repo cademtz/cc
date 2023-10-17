@@ -198,6 +198,14 @@ void x86func_sub(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
 /// @brief Emit: `mov dst, src`
 /// @param opsize A value from @ref x86_opsize
 void x86func_mov(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
+/// @brief Emit: `jz offset`
+void x86func_jz(x86func* func, int32_t offset);
+/// @brief Alias for @ref jz
+static inline x86func_je(x86func* func, int32_t offset) { x86func_jz(func, offset); }
+/// @brief Emit: `jnz offset`
+void x86func_jnz(x86func* func, int32_t offset);
+/// @brief Alias for @ref jnz
+static inline x86func_jne(x86func* func, int32_t offset) { x86func_jnz(func, offset); }
 /// @brief Emit: `ret`
 void x86func_ret(x86func* func);
 
@@ -263,8 +271,8 @@ static inline x86_regmem x86_index(uint8_t reg, uint8_t index_reg, uint8_t scale
 /**
  * @brief Make a de-referenced address operand.
  * 
- * In long mode, this becomes a sign-extended offset where `[RIP+offset]`.
- * Otherwise, this becomes `ds:offset`.
+ * In long mode, this represents a sign-extended offset: `[RIP+offset]`.
+ * Otherwise, this represents `ds:offset`.
  */
 static inline x86_regmem x86_offset(int32_t offset)
 {
