@@ -39,49 +39,110 @@ int test_x86(void)
     x86func func;
 
     { // Test return
-        x86func_create(&func);
+        x86func_create(&func, X86_MODE_LONG);
         x86func_ret(&func);
         test_assert("Expected opcode 0xC3", equal_code(&func, -1, "\xC3"));
         x86func_destroy(&func);
     }
-    { // Test various operands
-        x86func_create(&func);
+    { // Test various operands in long mode with default operand size
+        x86func_create(&func, X86_MODE_LONG);
 
         size_t block = x86func_block(&func);
-        x86func_add(&func, x86_reg(X86_REG_C), x86_reg(X86_REG_B));
+        x86func_add(&func, 0, x86_reg(X86_REG_C), x86_reg(X86_REG_B));
         test_assert("Expected `add ecx, ebx`", equal_code(&func, block, "\x01\xD9"));
 
         block = x86func_block(&func);
-        x86func_add(&func, x86_reg(X86_REG_R15), x86_reg(X86_REG_B));
+        x86func_add(&func, 0, x86_reg(X86_REG_R15), x86_reg(X86_REG_B));
         test_assert("Expected `add r15d, ebx`", equal_code(&func, block, "\x41\x01\xDF"));
 
         block = x86func_block(&func);
-        x86func_add(&func, x86_reg(X86_REG_B), x86_deref(X86_REG_R15));
+        x86func_add(&func, 0, x86_reg(X86_REG_B), x86_deref(X86_REG_R15));
         test_assert("Expected `add ebx, DWORD PTR [r15]`", equal_code(&func, block, "\x41\x03\x1F"));
         
         block = x86func_block(&func);
-        x86func_add(&func, x86_deref(X86_REG_SP), x86_reg(X86_REG_C));
-        test_assert("Expected `add DWORD PTR [esp], ecx`", equal_code(&func, block, "\x01\x0C\x24"));
+        x86func_add(&func, 0, x86_deref(X86_REG_SP), x86_reg(X86_REG_C));
+        test_assert("Expected `add DWORD PTR [rsp], ecx`", equal_code(&func, block, "\x01\x0C\x24"));
         
         block = x86func_block(&func);
-        x86func_add(&func, x86_deref(X86_REG_BP), x86_reg(X86_REG_C));
-        test_assert("Expected `add DWORD PTR [ebp+0x0], ecx`", equal_code(&func, block, "\x01\x4D\x00"));
+        x86func_add(&func, 0, x86_deref(X86_REG_BP), x86_reg(X86_REG_C));
+        test_assert("Expected `add DWORD PTR [rbp+0x0], ecx`", equal_code(&func, block, "\x01\x4D\x00"));
         
         block = x86func_block(&func);
-        x86func_add(&func, x86_index(X86_REG_BP, X86_REG_A, X86_SIB_SCALE_4, -0x20), x86_reg(X86_REG_C));
-        test_assert("Expected `add DWORD PTR [ebp+eax*4-0x20], ecx`", equal_code(&func, block, "\x01\x4C\x85\xE0"));
+        x86func_add(&func, 0, x86_index(X86_REG_BP, X86_REG_A, X86_SIB_SCALE_4, -0x20), x86_reg(X86_REG_C));
+        test_assert("Expected `add DWORD PTR [rbp+rax*4-0x20], ecx`", equal_code(&func, block, "\x01\x4C\x85\xE0"));
         
         block = x86func_block(&func);
-        x86func_add(&func, x86_index(X86_REG_BP, X86_REG_A, X86_SIB_SCALE_4, -0x400), x86_reg(X86_REG_C));
-        test_assert("Expected `add DWORD PTR [ebp+eax*4-0x400], ecx`", equal_code(&func, block, "\x01\x8C\x85\x00\xFC\xFF\xFF"));
+        x86func_add(&func, 0, x86_index(X86_REG_BP, X86_REG_A, X86_SIB_SCALE_4, -0x400), x86_reg(X86_REG_C));
+        test_assert("Expected `add DWORD PTR [rbp+rax*4-0x400], ecx`", equal_code(&func, block, "\x01\x8C\x85\x00\xFC\xFF\xFF"));
         
         block = x86func_block(&func);
-        x86func_add(&func, x86_index(X86_REG_A, X86_REG_C, X86_SIB_SCALE_1, 0), x86_const(0x20));
+        x86func_add(&func, 0, x86_index(X86_REG_A, X86_REG_C, X86_SIB_SCALE_1, 0), x86_const(0x20));
         test_assert("Expected `add DWORD PTR [eax+ecx], 0x20`", equal_code(&func, block, "\x83\x04\x08\x20"));
         
         block = x86func_block(&func);
-        x86func_add(&func, x86_offset(0x44444444), x86_const(0x33333333));
-        test_assert("Expected `add DWORD PTR [0x44444444], 0x33333333`", equal_code(&func, block, "\x81\x05\x44\x44\x44\x44\x33\x33\x33\x33"));
+        x86func_add(&func, 0, x86_offset(0x44444444), x86_const(0x33333333));
+        test_assert("Expected `add DWORD PTR [rip+0x44444444], 0x33333333`", equal_code(&func, block, "\x81\x05\x44\x44\x44\x44\x33\x33\x33\x33"));
+
+        x86func_destroy(&func);
+    }
+    { // Test reg, mem, and const operands in long mode with various operand sizes
+        x86func_create(&func, X86_MODE_LONG);
+
+        // byte size
+        
+        size_t block = x86func_block(&func);
+        x86func_add(&func, X86_OPSIZE_BYTE, x86_reg(X86_REG_C), x86_const(0x11));
+        test_assert("Expected `add cl, 0x11`", equal_code(&func, block, "\x80\xC1\x11"));
+
+        block = x86func_block(&func);
+        x86func_add(&func, X86_OPSIZE_BYTE, x86_deref(X86_REG_C), x86_const(0x11));
+        test_assert("Expected `add BYTE PTR [rcx], 0x11`", equal_code(&func, block, "\x80\x01\x11"));
+
+        block = x86func_block(&func);
+        x86func_add(&func, X86_OPSIZE_BYTE, x86_deref(X86_REG_C), x86_reg(X86_REG_A));
+        test_assert("Expected `add BYTE PTR [rcx], al`", equal_code(&func, block, "\x00\x01"));
+
+        block = x86func_block(&func);
+        x86func_add(&func, X86_OPSIZE_BYTE, x86_reg(X86_REG_C), x86_deref(X86_REG_A));
+        test_assert("Expected `add cl, BYTE PTR [rax]`", equal_code(&func, block, "\x02\x08"));
+
+        // word size
+
+        block = x86func_block(&func);
+        x86func_add(&func, X86_OPSIZE_WORD, x86_reg(X86_REG_C), x86_const(0x11));
+        test_assert("Expected `add cx, 0x11`", equal_code(&func, block, "\x66\x83\xC1\x11"));
+
+        block = x86func_block(&func);
+        x86func_add(&func, X86_OPSIZE_WORD, x86_deref(X86_REG_C), x86_const(0x11));
+        test_assert("Expected `add WORD PTR [rcx], 0x11`", equal_code(&func, block, "\x66\x83\x01\x11"));
+
+        block = x86func_block(&func);
+        x86func_add(&func, X86_OPSIZE_WORD, x86_deref(X86_REG_C), x86_reg(X86_REG_A));
+        test_assert("Expected `add WORD PTR [rcx], ax`", equal_code(&func, block, "\x66\x01\x01"));
+
+        block = x86func_block(&func);
+        x86func_add(&func, X86_OPSIZE_WORD, x86_reg(X86_REG_C), x86_deref(X86_REG_A));
+        test_assert("Expected `add cx, WORD PTR [rax]`", equal_code(&func, block, "\x66\x03\x08"));
+        
+        // qword size
+
+        block = x86func_block(&func);
+        x86func_add(&func, X86_OPSIZE_QWORD, x86_reg(X86_REG_C), x86_const(0x11));
+        test_assert("Expected `add rcx, 0x11`", equal_code(&func, block, "\x48\x83\xC1\x11"));
+
+        block = x86func_block(&func);
+        x86func_add(&func, X86_OPSIZE_QWORD, x86_deref(X86_REG_C), x86_const(0x11));
+        test_assert("Expected `add QWORD PTR [rcx], 0x11`", equal_code(&func, block, "\x48\x83\x01\x11"));
+
+        block = x86func_block(&func);
+        x86func_add(&func, X86_OPSIZE_QWORD, x86_deref(X86_REG_C), x86_reg(X86_REG_A));
+        test_assert("Expected `add QWORD PTR [rcx], rax`", equal_code(&func, block, "\x48\x01\x01"));
+
+        block = x86func_block(&func);
+        x86func_add(&func, X86_OPSIZE_QWORD, x86_reg(X86_REG_C), x86_deref(X86_REG_A));
+        test_assert("Expected `add rcx, QWORD PTR [rax]`", equal_code(&func, block, "\x48\x03\x08"));
+
+        x86func_destroy(&func);
     }
     
     return 1;

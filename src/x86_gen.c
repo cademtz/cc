@@ -98,13 +98,17 @@ static bool x86func_regmem(x86func* func, x86_regmem lhs, x86_regmem rhs)
 }
 
 /**
- * @brief Emit a REX byte when necessary.
+ * @brief Emit various operand-affecting  prefixes (REX and others) where necessary.
  * 
  * Only one memory operand is allowed.
  * When both operands are direct registers, `lhs` is assumed to be the `rm` field of `ModRM.rm`.
+ * @param opsize A value from @ref x86_opsize
+ * @param lhs Any operand
+ * @param rhs Any operand.
+ * If the instruction has no other operand, a placeholder register from 0 to 7 will work (`x86_reg(0)`)
  * @return True if the operands are valid
  */
-static bool x86func_rex_binary(x86func* func, x86_regmem lhs, x86_regmem rhs)
+static bool x86func_rex_binary(x86func* func, uint8_t opsize, x86_regmem lhs, x86_regmem rhs)
 {
     const x86_regmem* indirect = NULL; // An indirect register operand
     const x86_regmem* direct = NULL;
@@ -136,14 +140,37 @@ static bool x86func_rex_binary(x86func* func, x86_regmem lhs, x86_regmem rhs)
             rex |= X86_REX_R;
     }
 
+    switch (func->mode)
+    {
+    case X86_MODE_REAL:
+        if (opsize > X86_OPSIZE_WORD)
+            return false;
+        break;
+    case X86_MODE_PROTECTED:
+        if (opsize > X86_OPSIZE_DWORD)
+            return false;
+        if (opsize == X86_OPSIZE_WORD)
+            x86func_imm8(func, 0x66);
+        break;
+    case X86_MODE_LONG:
+        if (opsize == X86_OPSIZE_WORD)
+            x86func_imm8(func, 0x66);
+        else if (opsize == X86_OPSIZE_QWORD)
+            rex |= X86_REX_W;
+    break;
+    default:
+        assert(0 && "This execution mode was not implemented");
+    }
+
     if (rex)
         x86func_imm8(func, rex | X86_REX__REX);
     return true;
 }
 
-void x86func_create(x86func* func)
+void x86func_create(x86func* func, uint8_t mode)
 {
     memset(func, 0, sizeof(*func));
+    func->mode = mode;
     func->blocks = (size_t*)malloc(sizeof(func->blocks[0]));
     func->blocks[0] = 0;
     func->num_blocks = 1;
@@ -186,18 +213,24 @@ void x86func_imm64(x86func* func, uint64_t imm)
         dst[i] = (imm >> (i * 8)) & 0xFF;
 }
 
-void x86func_add(x86func* func, x86_regmem dst, x86_regmem src)
+void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
 {
     // dst may not be a constant
     if (dst.type == X86_REGMEM_CONST)
         return;
     
-    if (!x86func_rex_binary(func, dst, src))
+    if (!x86func_rex_binary(func, opsize, dst, src))
         return;
     
     if (src.type == X86_REGMEM_CONST) // Add a constant value
     {
-        if (src.offset < INT8_MIN || src.offset > INT8_MAX)
+        if (opsize == X86_OPSIZE_BYTE)
+        {
+            x86func_imm8(func, 0x80);
+            x86func_regmem(func, dst, x86_reg(0));
+            x86func_imm8(func, (uint8_t)src.offset);
+        }
+        else if (src.offset < INT8_MIN || src.offset > INT8_MAX)
         {
             x86func_imm8(func, 0x81);
             x86func_regmem(func, dst, x86_reg(0));
@@ -212,12 +245,12 @@ void x86func_add(x86func* func, x86_regmem dst, x86_regmem src)
     }
     else if (src.type == X86_REGMEM_REG) // Add a register
     {
-        x86func_imm8(func, 1); // ADD reg/mem64, reg64      01 /r
+        x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0 : 1); // ADD reg/mem64, reg64      01 /r
         x86func_regmem(func, dst, src);
     }
     else // Add a value in memory
     {
-        x86func_imm8(func, 3); // ADD reg64, reg/mem64      03 /r
+        x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 2 : 3); // ADD reg64, reg/mem64      03 /r
         x86func_regmem(func, dst, src);
     }
 }

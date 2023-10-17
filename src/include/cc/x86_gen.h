@@ -25,7 +25,7 @@ enum x86_mode
  * Registers are in groups of 8, in the same order as required in the ModRM byte.
  * Mask the index with 3 bits (or modulo 8) to get the ModRM index for that register.
  */
-enum x86_reg
+enum x86_reg_enum
 {
     X86_REG_A,
     X86_REG_C,
@@ -83,6 +83,24 @@ enum x86_rex
     X86_REX_W = 1 << 3,
     /// @brief The high nibble of every REX prefix
     X86_REX__REX = 0x40,
+};
+
+enum x86_opsize
+{
+    /**
+     * @brief The default size, according to the current execution mode.
+     * 
+     * - Real:      WORD
+     * - Protected: DWORD
+     * - Long:      DWORD
+     */
+    X86_OPSIZE_DEFAULT,
+    X86_OPSIZE_BYTE,
+    X86_OPSIZE_WORD,
+    /// @brief Only works in protected mode
+    X86_OPSIZE_DWORD,
+    /// @brief Only works in long mode
+    X86_OPSIZE_QWORD,
 };
 
 enum x86_regmem_type
@@ -150,16 +168,19 @@ typedef struct x86func
     size_t* blocks;
     size_t size_code;
     size_t num_blocks;
+    /// @brief A value from @ref x86_mode
+    uint8_t mode;
 } x86func;
 
 /// @brief Create a new function with one block
-void x86func_create(x86func* func);
+/// @param mode A value from @ref x86_mode
+void x86func_create(x86func* func, uint8_t mode);
 void x86func_destroy(x86func* func);
 
 /// @brief Begin a new block in the function. If there is no code, this will have no effect.
 /// @return The new block's index
 size_t x86func_block(x86func* func);
-/// @brief Emit one byte
+/// @brief Emit an 8-bit immediate value
 void x86func_imm8(x86func* func, uint8_t byte);
 /// @brief Emit a 16-bit immediate value
 void x86func_imm16(x86func* func, uint16_t imm);
@@ -168,7 +189,10 @@ void x86func_imm32(x86func* func, uint32_t imm);
 /// @brief Emit a 64-bit immediate value
 void x86func_imm64(x86func* func, uint64_t imm);
 
-void x86func_add(x86func* func, x86_regmem dst, x86_regmem src);
+/// @brief Emit: `add dst, src`
+/// @param opsize A value from @ref x86_opsize
+void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
+/// @brief Emit: `ret`
 void x86func_ret(x86func* func);
 
 /**
