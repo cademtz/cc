@@ -198,6 +198,8 @@ void x86func_sub(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
 /// @brief Emit: `mov dst, src`
 /// @param opsize A value from @ref x86_opsize
 void x86func_mov(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
+/// @brief Emit: `cmp lhs, rhs`, where `lhs` is always a reg/mem operand
+void x86func_cmp(x86func* func, uint8_t opsize, x86_regmem lhs, x86_regmem rhs);
 /// @brief Emit: `jz offset`
 void x86func_jz(x86func* func, int32_t offset);
 /// @brief Alias for @ref jz
