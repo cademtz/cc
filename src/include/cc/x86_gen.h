@@ -118,7 +118,7 @@ enum x86_regmem_type
 /// @brief A high-level register/memory operand representation
 typedef struct x86_regmem
 {
-    /// @brief A value from @ref x86_reg.
+    /// @brief A value from @ref x86_reg_enum.
     /// This may be the base of a memory operand.
     uint8_t reg;
     /// @brief A value of @ref x86_regmem_type
@@ -166,7 +166,9 @@ typedef struct x86func
     uint8_t* code;
     /// @brief Each block's offset from the entrypoint, in order
     size_t* blocks;
+    /// @brief Number of bytes in @ref code
     size_t size_code;
+    /// @brief Number of items in @ref blocks
     size_t num_blocks;
     /// @brief A value from @ref x86_mode
     uint8_t mode;
@@ -214,9 +216,9 @@ void x86func_ret(x86func* func);
 /**
  * @brief Encode a ModRM byte
  * @param mod A value from @ref x86_mod
- * @param reg A value from @ref x86_reg, which will be wrapped from 0-7.
+ * @param reg A value from @ref x86_reg_enum, which will be wrapped from 0-7.
  * This may also be the `/digit` number in the AMD64 manual.
- * @param rm A value from @ref x86_reg, which will be wrapped from 0-7
+ * @param rm A value from @ref x86_reg_enum, which will be wrapped from 0-7
  */
 static inline uint8_t x86_modrm(uint8_t mod, uint8_t reg, uint8_t rm)
 {
