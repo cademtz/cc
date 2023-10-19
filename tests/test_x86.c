@@ -193,6 +193,18 @@ int test_x86(void)
 
         x86func_destroy(&func);
     }
-    
+    { // Test that our offsets work
+        x86func_create(&func, X86_MODE_LONG);
+
+        x86func_jz(&func, 0xFF);
+        test_assert("Expected 4-byte immediate", func.lhs_imm.size == 4 && func.lhs_imm.offset == func.size_code - 4);
+
+        x86func_add(&func, X86_OPSIZE_DWORD, x86_offset(0xFF), x86_const(0xFF));
+        test_assert("Expected 4-byte lhs immediate", func.lhs_imm.size == 4 && func.lhs_imm.offset < func.size_code - 4);
+        test_assert("Expected 4-byte rhs immediate", func.rhs_imm.size == 4 && func.rhs_imm.offset == func.size_code - 4);
+
+        x86func_destroy(&func);
+    }
+
     return 1;
 }

@@ -97,9 +97,9 @@ enum x86_opsize
     X86_OPSIZE_DEFAULT,
     X86_OPSIZE_BYTE,
     X86_OPSIZE_WORD,
-    /// @brief Only works in protected mode
+    /// @brief Only effective in long mode
     X86_OPSIZE_DWORD,
-    /// @brief Only works in long mode
+    /// @brief Only effective in long mode
     X86_OPSIZE_QWORD,
 };
 
@@ -147,18 +147,14 @@ typedef struct x86_abi_reg
     bool is_volatile;
 } x86reg;
 
-/// @brief A configurable x86 generator
-typedef struct x86gen
+/// @brief The location of an immediate value in function code
+typedef struct x86imm
 {
-    /// @brief A value from @ref x86_mode
-    uint8_t mode;
-    
-} x86gen;
-
-typedef struct x86link
-{
-    uint32_t code_offset;
-} x86link;
+    /// @brief Offset from the start of the function
+    size_t offset;
+    /// @brief Size, in bytes
+    size_t size;
+} x86imm;
 
 typedef struct x86func
 {
@@ -172,6 +168,10 @@ typedef struct x86func
     size_t num_blocks;
     /// @brief A value from @ref x86_mode
     uint8_t mode;
+    /// @brief Info on the last instruction's left-operand immediate (if any)
+    x86imm lhs_imm;
+    /// @brief Info on the last instruction's right-operand immediate (if any)
+    x86imm rhs_imm;
 } x86func;
 
 /// @brief Create a new function with one block

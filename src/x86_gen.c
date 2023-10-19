@@ -11,7 +11,32 @@ static uint8_t* x86func_append(x86func* func, size_t num_bytes)
 }
 
 /**
+ * @brief Emit an immediate value in code and save the location
+ * @param value The immediate value to emit
+ * @param size Size of the offset, in bytes. Must be 1, 2, or 4.
+ * @param out_info Store info about the new immediate value
+ */
+static void x86func_imm(x86func* func, uint32_t value, uint8_t size, x86imm* out_info)
+{
+    size_t offset = func->size_code;
+
+    switch (size)
+    {
+    case 1: x86func_imm8(func, (uint8_t)value); break;
+    case 2: x86func_imm16(func, (uint16_t)value); break;
+    case 4: x86func_imm32(func, (uint32_t)value); break;
+    default:
+        assert(0 && "Size must be a power of two, less-than or equal to 4");
+    }
+    
+    out_info->offset = offset;
+    out_info->size = size;
+}
+
+/**
  * @brief Emit the encoded reg/mem and reg operands.
+ * 
+ * If an operand is a memory offset (such as `[0x1000]`), then `func->imm` is written.
  * 
  * Only one memory operand is allowed.
  * The operands may only be a register or a memory operand.
@@ -36,6 +61,7 @@ static bool x86func_regmem(x86func* func, x86_regmem lhs, x86_regmem rhs)
     uint32_t imm = 0;       // The immediate to emit
     uint8_t modrm = 0;      // The ModRM to emit
     uint8_t sib = 0;        // The SIB to emit
+    x86imm* imm_info = NULL;// Store info about the immediate, if any
     const x86_regmem* indirect = NULL;
     const x86_regmem* direct = NULL;
 
@@ -77,6 +103,7 @@ static bool x86func_regmem(x86func* func, x86_regmem lhs, x86_regmem rhs)
             // In protected mode, this will emit ds:offset32
             // In long mode, this will emit [RIP+offset32]
             modrm = x86_modrm(X86_MOD_DISP0, 0, X86_REG_BP);
+            imm_info = !lhs_direct ? &func->lhs_imm : &func->rhs_imm;
             imm_size = 4;
             imm = (uint32_t)indirect->offset;
         }
@@ -94,11 +121,17 @@ static bool x86func_regmem(x86func* func, x86_regmem lhs, x86_regmem rhs)
         x86func_imm8(func, (uint8_t)imm);
     else if (imm_size == 4)
         x86func_imm32(func, imm);
+
+    if (imm_info)
+    {
+        imm_info->offset = func->size_code - imm_size;
+        imm_info->size = imm_size;
+    }
     return true;
 }
 
 /**
- * @brief Emit various operand-affecting  prefixes (REX and others) where necessary.
+ * @brief Emit various operand-affecting prefixes (REX and others) where necessary.
  * 
  * Only one memory operand is allowed.
  * When both operands are direct registers, `lhs` is assumed to be the `rm` field of `ModRM.rm`.
@@ -234,10 +267,8 @@ void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
         {
             x86func_imm8(func, 0x81);
             x86func_regmem(func, dst, x86_reg(0));
-            if (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD)
-                x86func_imm16(func, (uint16_t)src.offset);
-            else
-                x86func_imm32(func, (uint32_t)src.offset);
+            uint8_t imm_size = (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD) ? 2 : 4;
+            x86func_imm(func, src.offset, imm_size, &func->rhs_imm);
         }
         else
         {
@@ -278,10 +309,8 @@ void x86func_sub(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
         {
             x86func_imm8(func, 0x81);
             x86func_regmem(func, dst, x86_reg(5));
-            if (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD)
-                x86func_imm16(func, (uint16_t)src.offset);
-            else
-                x86func_imm32(func, (uint32_t)src.offset);
+            uint8_t imm_size = (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD) ? 2 : 4;
+            x86func_imm(func, src.offset, imm_size, &func->rhs_imm);
         }
         else
         {
@@ -322,10 +351,8 @@ void x86func_cmp(x86func* func, uint8_t opsize, x86_regmem lhs, x86_regmem rhs)
         {
             x86func_imm8(func, 0x81);
             x86func_regmem(func, lhs, x86_reg(7));
-            if (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD)
-                x86func_imm16(func, (uint16_t)rhs.offset);
-            else
-                x86func_imm32(func, (uint32_t)rhs.offset);
+            uint8_t imm_size = (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD) ? 2 : 4;
+            x86func_imm(func, rhs.offset, imm_size, &func->rhs_imm);
         }
         else
         {
@@ -388,10 +415,7 @@ void x86func_jz(x86func* func, int32_t offset)
     {
         x86func_imm8(func, 0x0F);
         x86func_imm8(func, 0x84);
-        if (func->mode >= X86_MODE_REAL)
-            x86func_imm32(func, (uint32_t)offset);
-        else
-            x86func_imm16(func, (uint16_t)offset);
+        x86func_imm(func, offset, func->mode >= X86_MODE_PROTECTED ? 4 : 2, &func->lhs_imm);
     }
     else
     {
@@ -406,7 +430,7 @@ void x86func_jnz(x86func* func, int32_t offset)
     {
         x86func_imm8(func, 0x0F);
         x86func_imm8(func, 0x85);
-        if (func->mode >= X86_MODE_REAL)
+        if (func->mode >= X86_MODE_PROTECTED)
             x86func_imm32(func, (uint32_t)offset);
         else
             x86func_imm16(func, (uint16_t)offset);
