@@ -160,18 +160,14 @@ typedef struct x86func
 {
     /// @brief x86 code
     uint8_t* code;
-    /// @brief Each block's offset from the entrypoint, in order
-    size_t* blocks;
     /// @brief Number of bytes in @ref code
     size_t size_code;
-    /// @brief Number of items in @ref blocks
-    size_t num_blocks;
-    /// @brief A value from @ref x86_mode
-    uint8_t mode;
     /// @brief Info on the last instruction's left-operand immediate (if any)
     x86imm lhs_imm;
     /// @brief Info on the last instruction's right-operand immediate (if any)
     x86imm rhs_imm;
+    /// @brief A value from @ref x86_mode
+    uint8_t mode;
 } x86func;
 
 /// @brief Create a new function with one block
@@ -179,9 +175,6 @@ typedef struct x86func
 void x86func_create(x86func* func, uint8_t mode);
 void x86func_destroy(x86func* func);
 
-/// @brief Begin a new block in the function. If there is no code, this will have no effect.
-/// @return The new block's index
-size_t x86func_block(x86func* func);
 /// @brief Emit an 8-bit immediate value
 void x86func_imm8(x86func* func, uint8_t byte);
 /// @brief Emit a 16-bit immediate value

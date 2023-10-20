@@ -204,24 +204,10 @@ void x86func_create(x86func* func, uint8_t mode)
 {
     memset(func, 0, sizeof(*func));
     func->mode = mode;
-    func->blocks = (size_t*)malloc(sizeof(func->blocks[0]));
-    func->blocks[0] = 0;
-    func->num_blocks = 1;
 }
 void x86func_destroy(x86func* func)
 {
     free(func->code);
-    free(func->blocks);
-}
-
-size_t x86func_block(x86func* func)
-{
-    if (func->size_code == 0)
-        return 0;
-    ++func->num_blocks;
-    func->blocks = (size_t*)realloc(func->blocks, func->num_blocks * sizeof(func->blocks[0]));
-    func->blocks[func->num_blocks - 1] = func->size_code;
-    return func->num_blocks - 1;
 }
 
 void x86func_imm8(x86func* func, uint8_t byte) {
