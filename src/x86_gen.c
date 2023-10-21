@@ -224,7 +224,8 @@ x86label x86func_newlabel(x86func* func)
     func->labels[index] = UINT32_MAX;
     return index;
 }
-void x86func_movelabel(x86func* func, x86label label, uint32_t offset)
+/// @brief Place `label` at `offset` and modify every reference in code
+static void x86func__movelabel(x86func* func, x86label label, uint32_t offset)
 {
     size_t old_writepos = func->writepos;
     func->labels[label] = offset;
@@ -247,6 +248,9 @@ void x86func_movelabel(x86func* func, x86label label, uint32_t offset)
         }
     }
     func->writepos = old_writepos;
+}
+void x86func_label(x86func* func, x86label label) {
+    x86func__movelabel(func, label, func->size_code);
 }
 /// @brief Save the current IP with `imm` as a reference to `label`
 void x86func__labelref(x86func* func, x86label label, const x86imm* imm)

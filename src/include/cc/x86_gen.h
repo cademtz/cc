@@ -203,12 +203,12 @@ void x86func_create(x86func* func, uint8_t mode);
 void x86func_destroy(x86func* func);
 /// @brief Create a new code label
 x86label x86func_newlabel(x86func* func);
-/// @brief Place the label at `loc` in code and relocate all jumps to it 
-void x86func_movelabel(x86func* func, x86label label, uint32_t loc);
-/// @brief Assign `label` to the current location. A shortcut for @ref x86func_movelabel.
-static inline void x86func_label(x86func* func, x86label label) {
-    x86func_movelabel(func, label, func->size_code);
-}
+/**
+ * @brief Place `label` at the current location in code.
+ * 
+ * It is undefined to call this at different locations.
+ */
+void x86func_label(x86func* func, x86label label);
 
 /// @brief Emit an 8-bit immediate value
 void x86func_imm8(x86func* func, uint8_t byte);
