@@ -151,10 +151,24 @@ typedef struct x86_abi_reg
 typedef struct x86imm
 {
     /// @brief Offset from the start of the function
-    size_t offset;
+    uint32_t offset;
     /// @brief Size, in bytes
-    size_t size;
+    uint8_t size;
 } x86imm;
+
+/// @brief The ID of a code label
+typedef uint16_t x86label;
+
+/// @brief An offset to the code referencing a label
+typedef struct x86labelref
+{
+    /// @brief The immediate to be modified
+    x86imm imm;
+    /// @brief Code offset of the next IP
+    uint32_t next_ip;
+    /// @brief The label being referenced
+    x86label label;
+} x86labelref;
 
 typedef struct x86func
 {
@@ -162,6 +176,19 @@ typedef struct x86func
     uint8_t* code;
     /// @brief Number of bytes in @ref code
     size_t size_code;
+    /// @brief Location to append or overwrite code
+    size_t writepos;
+
+    /// @brief Locations of all labels in code
+    uint32_t* labels;
+    /// @brief Number of items in @ref labels
+    x86label num_labels;
+
+    /// @brief Array of references to labels
+    x86labelref* labelrefs;
+    /// @brief Number of items in @ref labelrefs
+    size_t num_labelrefs;
+
     /// @brief Info on the last instruction's left-operand immediate (if any)
     x86imm lhs_imm;
     /// @brief Info on the last instruction's right-operand immediate (if any)
@@ -174,6 +201,14 @@ typedef struct x86func
 /// @param mode A value from @ref x86_mode
 void x86func_create(x86func* func, uint8_t mode);
 void x86func_destroy(x86func* func);
+/// @brief Create a new code label
+x86label x86func_newlabel(x86func* func);
+/// @brief Place the label at `loc` in code and relocate all jumps to it 
+void x86func_movelabel(x86func* func, x86label label, uint32_t loc);
+/// @brief Assign `label` to the current location. A shortcut for @ref x86func_movelabel.
+static inline void x86func_label(x86func* func, x86label label) {
+    x86func_movelabel(func, label, func->size_code);
+}
 
 /// @brief Emit an 8-bit immediate value
 void x86func_imm8(x86func* func, uint8_t byte);
@@ -193,16 +228,68 @@ void x86func_sub(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
 /// @brief Emit: `mov dst, src`
 /// @param opsize A value from @ref x86_opsize
 void x86func_mov(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
-/// @brief Emit: `cmp lhs, rhs`, where `lhs` is always a reg/mem operand
+/// @brief Emit: `cmp lhs, rhs`, where `lhs` is always a non-const operand
 void x86func_cmp(x86func* func, uint8_t opsize, x86_regmem lhs, x86_regmem rhs);
-/// @brief Emit: `jz offset`
-void x86func_jz(x86func* func, int32_t offset);
-/// @brief Alias for @ref jz
-static inline void x86func_je(x86func* func, int32_t offset) { x86func_jz(func, offset); }
-/// @brief Emit: `jnz offset`
-void x86func_jnz(x86func* func, int32_t offset);
-/// @brief Alias for @ref jnz
-static inline void x86func_jne(x86func* func, int32_t offset) { x86func_jnz(func, offset); }
+/// @brief Emit: `jo label`
+void x86func_jo(x86func* func, x86label label);
+/// @brief Emit: `jno label`
+void x86func_jno(x86func* func, x86label label);
+/// @brief Emit: `jc label`
+void x86func_jc(x86func* func, x86label label);
+/// @brief Alias for @ref x86func_jc
+static inline void x86func_jb(x86func* func, x86label label) { x86func_jc(func, label); }
+/// @brief Alias for @ref x86func_jc
+static inline void x86func_jnae(x86func* func, x86label label) { x86func_jc(func, label); }
+/// @brief Emit: `jnc label`
+void x86func_jnc(x86func* func, x86label label);
+/// @brief Alias for @ref x86func_jnc
+static inline void x86func_jnb(x86func* func, x86label label) { x86func_jnc(func, label); }
+/// @brief Alias for @ref x86func_jnc
+static inline void x86func_jae(x86func* func, x86label label) { x86func_jnc(func, label); }
+/// @brief Emit: `jz label`
+void x86func_jz(x86func* func, x86label label);
+/// @brief Alias for @ref x86func_jz
+static inline void x86func_je(x86func* func, x86label label) { x86func_jz(func, label); }
+/// @brief Emit: `jnz label`
+void x86func_jnz(x86func* func, x86label label);
+/// @brief Alias for @ref x86func_jnz
+static inline void x86func_jne(x86func* func, x86label label) { x86func_jnz(func, label); }
+/// @brief Emit: `jbe label`
+void x86func_jbe(x86func* func, x86label label);
+/// @brief Alias for @ref x86func_jbe
+static inline void x86func_jna(x86func* func, x86label label) { x86func_jbe(func, label); }
+/// @brief Emit: `jnbe label`
+void x86func_jnbe(x86func* func, x86label label);
+/// @brief Alias for @ref x86func_jnbe
+static inline void x86func_ja(x86func* func, x86label label) { x86func_jnbe(func, label); }
+/// @brief Emit: `js label`
+void x86func_js(x86func* func, x86label label);
+/// @brief Emit: `jns label`
+void x86func_jns(x86func* func, x86label label);
+/// @brief Emit: `jp label`
+void x86func_jp(x86func* func, x86label label);
+/// @brief Alias for @ref x86func_jp
+static inline void x86func_jpe(x86func* func, x86label label) { x86func_jp(func, label); }
+/// @brief Emit: `jnp label`
+void x86func_jnp(x86func* func, x86label label);
+/// @brief Alias for @ref x86func_jnp
+static inline void x86func_jpo(x86func* func, x86label label) { x86func_jnp(func, label); }
+/// @brief Emit: `jl label`
+void x86func_jl(x86func* func, x86label label);
+/// @brief Alias for @ref x86func_jl
+static inline void x86func_jnge(x86func* func, x86label label) { x86func_jl(func, label); }
+/// @brief Emit: `jnl label`
+void x86func_jnl(x86func* func, x86label label);
+/// @brief Alias for @ref x86func_jnl
+static inline void x86func_jge(x86func* func, x86label label) { x86func_jnl(func, label); }
+/// @brief Emit: `jle label`
+void x86func_jle(x86func* func, x86label label);
+/// @brief Alias for @ref x86func_jle
+static inline void x86func_jng(x86func* func, x86label label) { x86func_jle(func, label); }
+/// @brief Emit: `jnle label`
+void x86func_jnle(x86func* func, x86label label);
+/// @brief Alias for @ref x86func_jnle
+static inline void x86func_jg(x86func* func, x86label label) { x86func_jnle(func, label); }
 /// @brief Emit: `ret`
 void x86func_ret(x86func* func);
 

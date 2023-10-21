@@ -1,13 +1,19 @@
 #include <cc/x86_gen.h>
 
-/// @brief Append `num_bytes` bytes to `func->code`
-/// @return Pointer to the appended bytes (do not save it)
-static uint8_t* x86func_append(x86func* func, size_t num_bytes)
+/// @brief Reserve `num_bytes` bytes in `func->code` for writing and advance `func->writepos`
+/// @return A temporary pointer to the reserved bytes
+static uint8_t* x86func_reserve(x86func* func, size_t num_bytes)
 {
-    size_t pos = func->size_code;
-    func->size_code += num_bytes;
-    func->code = (uint8_t*)realloc(func->code, func->size_code);
-    return func->code + pos;
+    size_t min_size = func->writepos + num_bytes;
+    if (func->size_code < min_size)
+    {
+        func->size_code = min_size;
+        func->code = (uint8_t*)realloc(func->code, func->size_code);
+    }
+    
+    uint8_t* result = func->code + func->writepos;
+    func->writepos += num_bytes;
+    return result;
 }
 
 /**
@@ -192,7 +198,7 @@ static bool x86func_rex_binary(x86func* func, uint8_t opsize, x86_regmem lhs, x8
             rex |= X86_REX_W;
     break;
     default:
-        assert(0 && "This execution mode was not implemented");
+        assert(0 && "This execution mode is not implemented");
     }
 
     if (rex)
@@ -208,26 +214,71 @@ void x86func_create(x86func* func, uint8_t mode)
 void x86func_destroy(x86func* func)
 {
     free(func->code);
+    free(func->labels);
+    free(func->labelrefs);
+}
+x86label x86func_newlabel(x86func* func)
+{
+    x86label index = func->num_labels++;
+    func->labels = (uint32_t*)realloc(func->labels, func->num_labels * sizeof(func->labels[0]));
+    func->labels[index] = UINT32_MAX;
+    return index;
+}
+void x86func_movelabel(x86func* func, x86label label, uint32_t offset)
+{
+    size_t old_writepos = func->writepos;
+    func->labels[label] = offset;
+
+    for (size_t i = 0; i < func->num_labelrefs; ++i)
+    {
+        const x86labelref* ref = &func->labelrefs[i];
+        if (ref->label != label)
+            continue;
+        
+        int32_t new_offset = offset - ref->next_ip;
+        func->writepos = ref->imm.offset;
+        switch (ref->imm.size)
+        {
+        case 1: x86func_imm8(func, (uint8_t)new_offset); break;
+        case 2: x86func_imm16(func, (uint16_t)new_offset); break;
+        case 4: x86func_imm32(func, (uint32_t)new_offset); break;
+        default:
+            assert(0 && "Size of a labelref's immediate must be 1, 2, or 4 bytes");
+        }
+    }
+    func->writepos = old_writepos;
+}
+/// @brief Save the current IP with `imm` as a reference to `label`
+void x86func__labelref(x86func* func, x86label label, const x86imm* imm)
+{
+    ++func->num_labelrefs;
+    func->labelrefs = (x86labelref*)realloc(func->labelrefs, func->num_labelrefs * sizeof(func->labelrefs[0]));
+
+    x86labelref* ref = &func->labelrefs[func->num_labelrefs - 1];
+    memset(ref, 0, sizeof(*ref));
+    ref->imm = *imm;
+    ref->next_ip = func->size_code;
+    ref->label = label;
 }
 
 void x86func_imm8(x86func* func, uint8_t byte) {
-    *x86func_append(func, 1) = byte;
+    *x86func_reserve(func, 1) = byte;
 }
 void x86func_imm16(x86func* func, uint16_t imm)
 {
-    uint8_t* dst = x86func_append(func, sizeof(imm));
+    uint8_t* dst = x86func_reserve(func, sizeof(imm));
     for (int i = 0; i < sizeof(imm); ++i)
         dst[i] = (imm >> (i * 8)) & 0xFF;
 }
 void x86func_imm32(x86func* func, uint32_t imm)
 {
-    uint8_t* dst = x86func_append(func, sizeof(imm));
+    uint8_t* dst = x86func_reserve(func, sizeof(imm));
     for (int i = 0; i < sizeof(imm); ++i)
         dst[i] = (imm >> (i * 8)) & 0xFF;
 }
 void x86func_imm64(x86func* func, uint64_t imm)
 {
-    uint8_t* dst = x86func_append(func, sizeof(imm));
+    uint8_t* dst = x86func_reserve(func, sizeof(imm));
     for (int i = 0; i < sizeof(imm); ++i)
         dst[i] = (imm >> (i * 8)) & 0xFF;
 }
@@ -395,37 +446,110 @@ void x86func_mov(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
     }
 }
 
-void x86func_jz(x86func* func, int32_t offset)
+/// @brief Internal jcc impl
+/// @param offset Offset relative to the end of the instruction
+/// @param nibble The lower opcode nibble, as defined in the AMD64 manual
+static void x86func__jcc(x86func* func, int32_t offset, uint8_t nibble)
 {
     if (offset < INT8_MIN || offset > INT8_MAX)
     {
         x86func_imm8(func, 0x0F);
-        x86func_imm8(func, 0x84);
+        x86func_imm8(func, 0x80 | nibble);
         x86func_imm(func, offset, func->mode >= X86_MODE_PROTECTED ? 4 : 2, &func->lhs_imm);
     }
     else
     {
-        x86func_imm8(func, 0x74);
+        x86func_imm8(func, 0x70 | nibble);
         x86func_imm8(func, (uint8_t)offset);
     }
 }
 
-void x86func_jnz(x86func* func, int32_t offset)
+/// @brief Internal jcc impl, except `offset` is simpler to use
+/// @param offset Offset relative to the start of the instruction
+/// @param nibble The lower opcode nibble, as defined in the AMD64 manual
+static void x86func__jcc_simpler(x86func* func, int32_t offset, uint8_t nibble)
 {
-    if (offset < INT8_MIN || offset > INT8_MAX)
+    // This new offset is relative to the end of the instruction.
+    // Assume the instruction will be 2 bytes long
+    int32_t post_offset = offset - 2;
+    size_t ins_begin = func->size_code;
+    x86func__jcc(func, post_offset, nibble);
+
+    // The offset does not fit in 1 byte. A larger instruction was emitted.
+    if (post_offset < INT8_MIN || post_offset > INT8_MAX)
     {
-        x86func_imm8(func, 0x0F);
-        x86func_imm8(func, 0x85);
-        if (func->mode >= X86_MODE_PROTECTED)
-            x86func_imm32(func, (uint32_t)offset);
-        else
+        // Rewrite the offset, adjusted using the new instruction size.
+        // We know the immediate is emitted at the end, and only 16- or 32-bit.
+        size_t ins_size = func->size_code - ins_begin;
+        post_offset = offset - ins_size;
+        func->writepos = func->lhs_imm.offset;
+        if (func->lhs_imm.size == 2)
             x86func_imm16(func, (uint16_t)offset);
+        else
+            x86func_imm32(func, (uint32_t)offset);
     }
-    else
+}
+
+/// @brief Higher level internal jcc impl, which jumps/references to a label
+/// @param nibble The lower opcode nibble, as defined in the AMD64 manual
+static void x86func__jcc_label(x86func* func, x86label label, uint8_t nibble)
+{
+    if (func->labels[label] != UINT32_MAX) // The label is defined
+        x86func__jcc_simpler(func, (int32_t)(func->labels[label] - func->size_code), nibble);
+    else  // The label is undefined. Reserve a 16-bit jump (expands to 32-bit based on execution mode)
     {
-        x86func_imm8(func, 0x75);
-        x86func_imm8(func, (uint8_t)offset);
+        x86func__jcc(func, INT16_MAX, nibble);
+        x86func__labelref(func, label, &func->lhs_imm);
     }
+}
+
+void x86func_jo(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 0);
+}
+void x86func_jno(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 1);
+}
+void x86func_jc(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 2);
+}
+void x86func_jnc(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 3);
+}
+void x86func_jz(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 4);
+}
+void x86func_jnz(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 5);
+}
+void x86func_jbe(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 6);
+}
+void x86func_jnbe(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 7);
+}
+void x86func_js(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 8);
+}
+void x86func_jns(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 9);
+}
+void x86func_jp(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 0xA);
+}
+void x86func_jnp(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 0xB);
+}
+void x86func_jl(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 0xC);
+}
+void x86func_jnl(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 0xD);
+}
+void x86func_jle(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 0xE);
+}
+void x86func_jnle(x86func* func, x86label label) {
+    x86func__jcc_label(func, label, 0xF);
 }
 
 void x86func_ret(x86func* func) {

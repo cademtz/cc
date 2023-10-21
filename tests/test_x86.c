@@ -1,5 +1,6 @@
 #include "test.h"
 #include <cc/x86_gen.h>
+#include <stdio.h>
 
 #define equal_code(func, offset, expected) equal__code(func, offset, expected, sizeof(expected) - 1)
 
@@ -188,16 +189,48 @@ int test_x86(void)
 
         x86func_destroy(&func);
     }
-    { // Test that our offsets work
+    { // Test lhs_imm and rhs_imm's values
         x86func_create(&func, X86_MODE_LONG);
+        x86label label = x86func_newlabel(&func);
 
-        x86func_jz(&func, 0xFF);
+        x86func_jz(&func, label);
         test_assert("Expected 4-byte immediate", func.lhs_imm.size == 4 && func.lhs_imm.offset == func.size_code - 4);
 
         x86func_add(&func, X86_OPSIZE_DWORD, x86_offset(0xFF), x86_const(0xFF));
         test_assert("Expected 4-byte lhs immediate", func.lhs_imm.size == 4 && func.lhs_imm.offset < func.size_code - 4);
         test_assert("Expected 4-byte rhs immediate", func.rhs_imm.size == 4 && func.rhs_imm.offset == func.size_code - 4);
 
+        x86func_destroy(&func);
+    }
+    { // Test some labels and jumps
+        x86func_create(&func, X86_MODE_PROTECTED);
+        x86label loop = x86func_newlabel(&func);
+        x86label exit = x86func_newlabel(&func);
+        x86_regmem eax = x86_reg(X86_REG_A);
+        x86_regmem ecx = x86_reg(X86_REG_C);
+
+        x86func_mov(&func, 0, eax, x86_const(0));       // eax = 0
+        x86func_mov(&func, 0, ecx, x86_offset(0x1000)); // ecx = *(uint32_t*)(0x1000)
+        x86func_cmp(&func, 0, ecx, x86_const(0));       // if (ecx == 0) goto exit
+        x86func_je(&func, exit);
+        
+        x86func_label(&func, loop);               // loop:
+        x86func_add(&func, 0, eax, ecx);          // eax += ecx
+        x86func_cmp(&func, 0, eax, x86_const(0)); // if (eax < 0) goto loop
+        x86func_jl(&func, loop);
+
+        x86func_label(&func, exit);
+        x86func_ret(&func);
+
+        test_assert("Expected matching code sample", equal_code(&func, 0,
+            "\xC7\xC0\x00\x00\x00\x00\x8B\x05\x00\x10\x00\x00\x83\xF9\x00\x0F\x84\x07\x00\x00\x00\x01\xC8\x83\xF8\x00\x7C\xF9\xC3"
+        ));
+        
+        printf("x86:\n");
+        for (size_t i = 0; i < func.size_code; ++i)
+            printf("%.2X ", func.code[i]);
+        printf("\n");
+        
         x86func_destroy(&func);
     }
 
