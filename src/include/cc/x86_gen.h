@@ -5,17 +5,54 @@
  * @file
  * @brief An x86/AMD64 assembler.
  * 
- * Instead of assembling text, this provides an API to generate each instruction.
+ * The API is similar to AsmJit. It uses function calls instead of assembling text.
+ * 
+ * Basics
+ * -----------------
+ * An assembler is created with an execution mode ( @ref x86_mode ).
+ * This sample will assemble `add rax, r15`:
+ * ```
+ *      x86func func;
+ *      x86func_create(&func, X86_MODE_LONG);
+ *      x86func_add(&func, X86_OPSIZE_QWORD, x86_reg(X86_REG_A), x86_reg(X86_REG_R15));
+ * ```
+ * The value @ref X86_OPSIZE_QWORD is an explicit override. It can be any value from @ref x86_opsize.
+ * Using @ref X86_OPSIZE_BYTE would add two bytes instead of two qwords.
+ * This sample will assemble `add al, r15b`:
+ * ```
+ *      x86func_add(&func, X86_OPSIZE_BYTE, x86_reg(X86_REG_A), x86_reg(X86_REG_R15));
+ * ```
+ * You may use the less explicit size @ref X86_OPSIZE_DEFAULT (0).
+ * 
+ * Labels and jumps
+ * -----------------
+ * Labels are required for conditional jumps. They are also more convenient.
+ * 
+ * You may create a label at any time:
+ * ```
+ *      x86label exit = x86func_newlabel(&func);
+ * ```
+ * You may jump to a label at any time:
+ * ```
+ *      x86func_cmp(&func, 0, x86_reg(X86_REG_A), x86_const(0));
+ *      x86func_jne(&func, exit); // if (eax != 0) goto exit
+ * ```
+ * You must eventually place the label and add code:
+ * ```
+ *      x86func_label(&func, exit); // This label will lead to the code below
+ *      x86func_ret(&func);
+ * ```
+ * It is undefined behavior to move the location of a label, or to jump to an unplaced label.
  */
 
 /// @brief x86 execution mode
 enum x86_mode
 {
-    /// @brief 16-bit
+    /// @brief 16-bit code
     X86_MODE_REAL,
-    /// @brief 32-bit
+    /// @brief 32-bit code
     X86_MODE_PROTECTED,
-    /// @brief 64-bit
+    /// @brief 64-bit code
     X86_MODE_LONG,
 };
 
@@ -90,9 +127,9 @@ enum x86_opsize
     /**
      * @brief The default size, according to the current execution mode.
      * 
-     * - Real:      WORD
-     * - Protected: DWORD
-     * - Long:      DWORD
+     * - `X86_MODE_REAL`:      WORD
+     * - `X86_MODE_PROTECTED`: DWORD
+     * - `X86_MODE_LONG`:      DWORD
      */
     X86_OPSIZE_DEFAULT,
     X86_OPSIZE_BYTE,
