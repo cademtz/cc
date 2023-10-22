@@ -158,7 +158,7 @@ typedef struct x86_regmem
     /// @brief A value from @ref x86_reg_enum.
     /// This may be the base of a memory operand.
     uint8_t reg;
-    /// @brief A value of @ref x86_regmem_type
+    /// @brief A value from @ref x86_regmem_type
     uint8_t type;
     /// @brief A value from @ref x86_sib_scale
     uint8_t scale;
@@ -257,11 +257,19 @@ void x86func_imm32(x86func* func, uint32_t imm);
 void x86func_imm64(x86func* func, uint64_t imm);
 
 /// @brief Emit: `add dst, src`
-/// @param opsize A value from @ref x86_opsize
 void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
 /// @brief Emit: `sub dst, src`
-/// @param opsize A value from @ref x86_opsize
 void x86func_sub(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
+/// @brief Emit: `imul src`
+/// @param src Any non-const operand
+void x86func_imul(x86func* func, uint8_t opsize, x86_regmem src);
+/// @brief Emit: `imul dst, src` (2 operands)
+/// @param opsize All values except @ref X86_OPSIZE_BYTE are supported
+/// @param dst A value from @ref x86_reg_enum
+void x86func_imul2(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem src);
+/// @brief Emit: `imul dst, lhs, rhs` (3 operands)
+/// @param opsize All values except @ref X86_OPSIZE_BYTE are supported
+void x86func_imul3(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem lhs, int32_t rhs);
 /// @brief Emit: `mov dst, src`
 /// @param opsize A value from @ref x86_opsize
 void x86func_mov(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);

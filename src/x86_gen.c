@@ -42,7 +42,7 @@ static void x86func_imm(x86func* func, uint32_t value, uint8_t size, x86imm* out
 /**
  * @brief Emit the encoded reg/mem and reg operands.
  * 
- * If an operand is a memory offset (such as `[0x1000]`), then `func->imm` is written.
+ * If lhs/rhs is a memory offset (such as `[0x1000]`), then `func->lhs_imm`/`func->rhs_imm` is written.
  * 
  * Only one memory operand is allowed.
  * The operands may only be a register or a memory operand.
@@ -369,6 +369,63 @@ void x86func_sub(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
     {
         x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0x2A : 0x2B);
         x86func_regmem(func, dst, src);
+    }
+}
+
+void x86func_imul(x86func* func, uint8_t opsize, x86_regmem src)
+{
+    if (src.type == X86_REGMEM_CONST)
+        return;
+    if (!x86func_rex_binary(func, opsize, src, x86_reg(5)))
+        return;
+    x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0xF6 : 0xF7);
+    x86func_regmem(func, src, x86_reg(5));
+}
+
+void x86func_imul2(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem src)
+{
+    if (src.type == X86_REGMEM_CONST)
+    {
+        x86func_imul3(func, opsize, dst, x86_reg(dst), src.offset);
+        return;
+    }
+
+    if (opsize == X86_OPSIZE_BYTE)
+        return;
+
+    // dst must be encoded as ModRM.reg.
+    // To ensure this, dst is passed as the "rhs" operand to our helpers.
+    // Helpers ensure "rhs" is always encode as ModRM.reg (if it's direct).
+    // Also with src as "lhs", src's immediates will be placed in `lhs_imm` for us!
+
+    if (!x86func_rex_binary(func, opsize, src, x86_reg(dst)))
+        return;
+    
+    x86func_imm8(func, 0x0F);
+    x86func_imm8(func, 0xAF);
+    x86func_regmem(func, src, x86_reg(dst));
+}
+
+void x86func_imul3(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem lhs, int32_t rhs)
+{
+    if (opsize == X86_OPSIZE_BYTE)
+        return;
+
+    if (!x86func_rex_binary(func, opsize, lhs, x86_reg(dst)))
+        return;
+    
+    if (rhs < INT8_MIN || rhs > INT8_MAX)
+    {
+        x86func_imm8(func, 0x69);
+        x86func_regmem(func, lhs, x86_reg(dst));
+        uint8_t imm_size = (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD) ? 2 : 4;
+        x86func_imm(func, (uint32_t)rhs, imm_size, &func->rhs_imm);
+    }
+    else
+    {
+        x86func_imm8(func, 0x6B);
+        x86func_regmem(func, lhs, x86_reg(dst));
+        x86func_imm8(func, (uint8_t)rhs);
     }
 }
 

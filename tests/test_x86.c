@@ -202,6 +202,26 @@ int test_x86(void)
 
         x86func_destroy(&func);
     }
+    { // Test imul
+        x86func_create(&func, X86_MODE_LONG);
+
+        x86func_imul2(&func, 0, X86_REG_A, x86_reg(X86_REG_C));
+        test_assert("Expected `imul eax, ecx`", equal_code(&func, 0, "\x0F\xAF\xC1"));
+
+        size_t offset = func.size_code;
+        x86func_imul2(&func, X86_OPSIZE_QWORD, X86_REG_A, x86_reg(X86_REG_C));
+        test_assert("Expected `imul eax, ecx`", equal_code(&func, offset, "\x48\x0F\xAF\xC1"));
+
+        offset = func.size_code;
+        x86func_imul2(&func, 0, X86_REG_A, x86_const(0x11223344));
+        test_assert("Expected `imul eax, eax, 0x11223344`", equal_code(&func, offset, "\x69\xC0\x44\x33\x22\x11"));
+
+        offset = func.size_code;
+        x86func_imul(&func, 0, x86_reg(X86_REG_R10));
+        test_assert("Expected `imul r10d`", equal_code(&func, offset, "\x41\xF7\xEA"));
+
+        x86func_destroy(&func);
+    }
     { // Test some labels and jumps
         x86func_create(&func, X86_MODE_PROTECTED);
         x86label loop = x86func_newlabel(&func);
