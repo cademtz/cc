@@ -1,4 +1,4 @@
-#include <cc/x86_gen.h>
+#include <cc/x86_asm.h>
 
 /// @brief Reserve `num_bytes` bytes in `func->code` for writing and advance `func->writepos`
 /// @return A temporary pointer to the reserved bytes

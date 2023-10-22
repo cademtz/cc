@@ -261,13 +261,16 @@ void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
 /// @brief Emit: `sub dst, src`
 void x86func_sub(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
 /// @brief Emit: `imul src`
-/// @param src Any non-const operand
+/// @param src Register or memory
 void x86func_imul(x86func* func, uint8_t opsize, x86_regmem src);
 /// @brief Emit: `imul dst, src` (2 operands)
 /// @param opsize All values except @ref X86_OPSIZE_BYTE are supported
 /// @param dst A value from @ref x86_reg_enum
+/// @param src Any operand
 void x86func_imul2(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem src);
 /// @brief Emit: `imul dst, lhs, rhs` (3 operands)
+/// @param dst A value from @ref x86_reg_enum
+/// @param src Register or memory
 /// @param opsize All values except @ref X86_OPSIZE_BYTE are supported
 void x86func_imul3(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem lhs, int32_t rhs);
 /// @brief Emit: `mov dst, src`

@@ -1,5 +1,5 @@
 #include "test.h"
-#include <cc/x86_gen.h>
+#include <cc/x86_asm.h>
 #include <stdio.h>
 
 #define equal_code(func, offset, expected) equal__code(func, offset, expected, sizeof(expected) - 1)
