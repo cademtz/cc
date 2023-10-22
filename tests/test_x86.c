@@ -222,6 +222,34 @@ int test_x86(void)
 
         x86func_destroy(&func);
     }
+    { // Test push and pop
+        x86func_create(&func, X86_MODE_LONG);
+
+        x86func_push(&func, 0, x86_reg(X86_REG_BP));
+        test_assert("Expected `push rbp`", equal_code(&func, 0, "\x55"));
+
+        size_t offset = func.size_code;
+        x86func_push(&func, X86_OPSIZE_WORD, x86_reg(X86_REG_B));
+        test_assert("Expected `push bx`", equal_code(&func, offset, "\x66\x53"));
+
+        offset = func.size_code;
+        x86func_push(&func, 0, x86_const(-8));
+        test_assert("Expected `push -8`", equal_code(&func, offset, "\x6A\xF8"));
+
+        offset = func.size_code;
+        x86func_push(&func, 0, x86_const(0x1122));
+        test_assert("Expected `push 0x1122`", equal_code(&func, offset, "\x68\x22\x11\x00\x00"));
+
+        offset = func.size_code;
+        x86func_pop(&func, 0, x86_reg(X86_REG_BP));
+        test_assert("Expected `pop rbp`", equal_code(&func, offset, "\x5d"));
+
+        offset = func.size_code;
+        x86func_pop(&func, 0, x86_const(0x11223344));
+        test_assert("Expected `pop QWORD PTR [rip+0x11223344]`", equal_code(&func, offset, "\x8F\x05\x44\x33\x22\x11"));
+
+        x86func_destroy(&func);
+    }
     { // Test some labels and jumps
         x86func_create(&func, X86_MODE_PROTECTED);
         x86label loop = x86func_newlabel(&func);
