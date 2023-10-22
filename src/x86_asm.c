@@ -40,22 +40,22 @@ static void x86func_imm(x86func* func, uint32_t value, uint8_t size, x86imm* out
 }
 
 /**
- * @brief Emit the encoded reg/mem and reg operands.
+ * @brief Emit reg/mem operands encoded in a ModRM byte (with SIB and offset when required)
+ * 
+ * Only one memory operand is allowed.
  * 
  * If lhs/rhs is a memory offset (such as `[0x1000]`), then `func->lhs_imm`/`func->rhs_imm` is written.
  * 
- * Only one memory operand is allowed.
- * The operands may only be a register or a memory operand.
- * When both operands are direct registers, `lhs` is assumed to be the `rm` field of `ModRM.rm`.
- * 
- * For certain instructions, the `ModRM.reg` field is part of the opcode.
- * In that case, set either `lhs` or `rhs` to `x86_reg(...)`.
+ * For certain instructions, the `ModRM.reg` field must be a magic number.
+ * In that case, pass `x86_reg(number)` in `rhs`
+ * @param lhs Register or memory. Always encoded in `ModRM.rm`, unless `rhs` is indirect.
+ * @param rhs Register or memory
  * @return True if the operands are valid and appended
  */
-static bool x86func_regmem(x86func* func, x86_regmem lhs, x86_regmem rhs)
+static bool x86func_modrm(x86func* func, x86operand lhs, x86operand rhs)
 {
-    bool lhs_direct = lhs.type == X86_REGMEM_REG;
-    bool rhs_direct = rhs.type == X86_REGMEM_REG;
+    bool lhs_direct = lhs.type == X86_OPERAND_REG;
+    bool rhs_direct = rhs.type == X86_OPERAND_REG;
 
     // There may be one indirect operand at most. It cannot be both.
     if (!lhs_direct && !rhs_direct)
@@ -68,8 +68,8 @@ static bool x86func_regmem(x86func* func, x86_regmem lhs, x86_regmem rhs)
     uint8_t modrm = 0;      // The ModRM to emit
     uint8_t sib = 0;        // The SIB to emit
     x86imm* imm_info = NULL;// Store info about the immediate, if any
-    const x86_regmem* indirect = NULL;
-    const x86_regmem* direct = NULL;
+    const x86operand* indirect = NULL;
+    const x86operand* direct = NULL;
 
     if (!lhs_direct)
         indirect = &lhs, direct = &rhs;
@@ -78,7 +78,7 @@ static bool x86func_regmem(x86func* func, x86_regmem lhs, x86_regmem rhs)
 
     if (indirect) // An indirect register or offset
     {
-        if (indirect->type == X86_REGMEM_MEM) // An indirect register, such as [eax] or [eax+ecx*16+4096]
+        if (indirect->type == X86_OPERAND_MEM) // An indirect register, such as [eax] or [eax+ecx*16+4096]
         {
             // Things that require the SIB byte:
             // - Indirection on SP (SP is used to indicate an SIB byte)
@@ -116,7 +116,7 @@ static bool x86func_regmem(x86func* func, x86_regmem lhs, x86_regmem rhs)
     }
     else // No indirection
     {
-        // Assume lhs in r/m
+        // Encode lhs in ModRM.rm by default
         modrm = x86_modrm(X86_MOD_DIRECT, rhs.reg, lhs.reg);
     }
     
@@ -147,20 +147,20 @@ static bool x86func_regmem(x86func* func, x86_regmem lhs, x86_regmem rhs)
  * If the instruction has no other operand, a placeholder register from 0 to 7 will work (`x86_reg(0)`)
  * @return True if the operands are valid
  */
-static bool x86func_rex_binary(x86func* func, uint8_t opsize, x86_regmem lhs, x86_regmem rhs)
+static bool x86func_rex_binary(x86func* func, uint8_t opsize, x86operand lhs, x86operand rhs)
 {
-    const x86_regmem* indirect = NULL; // An indirect register operand
-    const x86_regmem* direct = NULL;
+    const x86operand* indirect = NULL; // An indirect register operand
+    const x86operand* direct = NULL;
     uint8_t rex = 0; // The lower REX nibble. Emitted if non-zero.
 
-    if (lhs.type == X86_REGMEM_MEM)
+    if (lhs.type == X86_OPERAND_MEM)
         indirect = &lhs, direct = &rhs;
-    else if (rhs.type == X86_REGMEM_MEM)
+    else if (rhs.type == X86_OPERAND_MEM)
         indirect = &rhs, direct = &lhs;
     
     if (indirect)
     {
-        if (direct->type == X86_REGMEM_MEM || direct->type == X86_REGMEM_OFFSET)
+        if (direct->type == X86_OPERAND_MEM || direct->type == X86_OPERAND_OFFSET)
             return false; // `direct` is a memory operand despite one already existing. That will not work.
 
         if (direct->reg >= X86_REG_R8 && direct->reg <= X86_REG_R15)
@@ -287,7 +287,7 @@ void x86func_imm64(x86func* func, uint64_t imm)
         dst[i] = (imm >> (i * 8)) & 0xFF;
 }
 
-void x86func_push(x86func* func, uint8_t opsize, x86_regmem src)
+void x86func_push(x86func* func, uint8_t opsize, x86operand src)
 {
     if (opsize == X86_OPSIZE_BYTE)
         return; // Cannot push a byte
@@ -302,7 +302,7 @@ void x86func_push(x86func* func, uint8_t opsize, x86_regmem src)
     if (!x86func_rex_binary(func, opsize, src, x86_reg(6)))
         return;
     
-    if (src.type == X86_REGMEM_CONST)
+    if (src.type == X86_OPERAND_CONST)
     {
         if (src.offset < INT8_MIN || src.offset > INT8_MAX)
         {
@@ -316,16 +316,16 @@ void x86func_push(x86func* func, uint8_t opsize, x86_regmem src)
             x86func_imm8(func, (uint8_t)src.offset);
         }
     }
-    else if (src.type == X86_REGMEM_REG)
+    else if (src.type == X86_OPERAND_REG)
         x86func_imm8(func, 0x50 + (src.reg & 7));
     else
     {
         x86func_imm8(func, 0xFF);
-        x86func_regmem(func, src, x86_reg(6));
+        x86func_modrm(func, src, x86_reg(6));
     }
 }
 
-void x86func_pop(x86func* func, uint8_t opsize, x86_regmem dst)
+void x86func_pop(x86func* func, uint8_t opsize, x86operand dst)
 {
     if (opsize == X86_OPSIZE_BYTE)
         return; // Cannot pop a byte
@@ -340,121 +340,121 @@ void x86func_pop(x86func* func, uint8_t opsize, x86_regmem dst)
     if (!x86func_rex_binary(func, opsize, dst, x86_reg(0)))
         return;
     
-    if (dst.type == X86_REGMEM_REG)
+    if (dst.type == X86_OPERAND_REG)
         x86func_imm8(func, 0x58 + (dst.reg & 7));
     else
     {
         x86func_imm8(func, 0x8F);
-        x86func_regmem(func, dst, x86_reg(0));
+        x86func_modrm(func, dst, x86_reg(0));
     }
 }
 
-void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
+void x86func_add(x86func* func, uint8_t opsize, x86operand dst, x86operand src)
 {
     // dst may not be a constant
-    if (dst.type == X86_REGMEM_CONST)
+    if (dst.type == X86_OPERAND_CONST)
         return;
     
     if (!x86func_rex_binary(func, opsize, dst, src))
         return;
     
-    if (src.type == X86_REGMEM_CONST) // Add a constant value
+    if (src.type == X86_OPERAND_CONST) // Add a constant value
     {
         if (opsize == X86_OPSIZE_BYTE)
         {
             x86func_imm8(func, 0x80);
-            x86func_regmem(func, dst, x86_reg(0));
+            x86func_modrm(func, dst, x86_reg(0));
             x86func_imm8(func, (uint8_t)src.offset);
         }
         else if (src.offset < INT8_MIN || src.offset > INT8_MAX)
         {
             x86func_imm8(func, 0x81);
-            x86func_regmem(func, dst, x86_reg(0));
+            x86func_modrm(func, dst, x86_reg(0));
             uint8_t imm_size = (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD) ? 2 : 4;
             x86func_imm(func, src.offset, imm_size, &func->rhs_imm);
         }
         else
         {
             x86func_imm8(func, 0x83);
-            x86func_regmem(func, dst, x86_reg(0));
+            x86func_modrm(func, dst, x86_reg(0));
             x86func_imm8(func, (uint8_t)src.offset);
         }
     }
-    else if (src.type == X86_REGMEM_REG) // Add a register
+    else if (src.type == X86_OPERAND_REG) // Add a register
     {
         x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0 : 1); // ADD reg/mem64, reg64      01 /r
-        x86func_regmem(func, dst, src);
+        x86func_modrm(func, dst, src);
     }
     else // Add a value in memory
     {
         x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 2 : 3); // ADD reg64, reg/mem64      03 /r
-        x86func_regmem(func, dst, src);
+        x86func_modrm(func, dst, src);
     }
 }
 
-void x86func_sub(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
+void x86func_sub(x86func* func, uint8_t opsize, x86operand dst, x86operand src)
 {
-    if (dst.type == X86_REGMEM_CONST)
+    if (dst.type == X86_OPERAND_CONST)
         return;
     
     if (!x86func_rex_binary(func, opsize, dst, src))
         return;
     
-    if (src.type == X86_REGMEM_CONST)
+    if (src.type == X86_OPERAND_CONST)
     {
         if (opsize == X86_OPSIZE_BYTE)
         {
             x86func_imm8(func, 0x80);
-            x86func_regmem(func, dst, x86_reg(5));
+            x86func_modrm(func, dst, x86_reg(5));
             x86func_imm8(func, (uint8_t)src.offset);
         }
         else if (src.offset < INT8_MIN || src.offset > INT8_MAX)
         {
             x86func_imm8(func, 0x81);
-            x86func_regmem(func, dst, x86_reg(5));
+            x86func_modrm(func, dst, x86_reg(5));
             uint8_t imm_size = (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD) ? 2 : 4;
             x86func_imm(func, src.offset, imm_size, &func->rhs_imm);
         }
         else
         {
             x86func_imm8(func, 0x83);
-            x86func_regmem(func, dst, x86_reg(5));
+            x86func_modrm(func, dst, x86_reg(5));
             x86func_imm8(func, (uint8_t)src.offset);
         }
     }
-    else if (src.type == X86_REGMEM_REG)
+    else if (src.type == X86_OPERAND_REG)
     {
         x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0x28 : 0x29);
-        x86func_regmem(func, dst, src);
+        x86func_modrm(func, dst, src);
     }
     else
     {
         x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0x2A : 0x2B);
-        x86func_regmem(func, dst, src);
+        x86func_modrm(func, dst, src);
     }
 }
 
-void x86func_mul(x86func* func, uint8_t opsize, x86_regmem src)
+void x86func_mul(x86func* func, uint8_t opsize, x86operand src)
 {
-    if (src.type == X86_REGMEM_CONST)
+    if (src.type == X86_OPERAND_CONST)
         return;
     if (!x86func_rex_binary(func, opsize, src, x86_reg(4)))
         return;
     x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0xF6 : 0xF7);
-    x86func_regmem(func, src, x86_reg(4));
+    x86func_modrm(func, src, x86_reg(4));
 }
-void x86func_imul(x86func* func, uint8_t opsize, x86_regmem src)
+void x86func_imul(x86func* func, uint8_t opsize, x86operand src)
 {
-    if (src.type == X86_REGMEM_CONST)
+    if (src.type == X86_OPERAND_CONST)
         return;
     if (!x86func_rex_binary(func, opsize, src, x86_reg(5)))
         return;
     x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0xF6 : 0xF7);
-    x86func_regmem(func, src, x86_reg(5));
+    x86func_modrm(func, src, x86_reg(5));
 }
-void x86func_imul2(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem src)
+void x86func_imul2(x86func* func, uint8_t opsize, uint8_t dst, x86operand src)
 {
-    if (src.type == X86_REGMEM_CONST)
+    if (src.type == X86_OPERAND_CONST)
     {
         x86func_imul3(func, opsize, dst, x86_reg(dst), src.offset);
         return;
@@ -473,9 +473,9 @@ void x86func_imul2(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem src)
     
     x86func_imm8(func, 0x0F);
     x86func_imm8(func, 0xAF);
-    x86func_regmem(func, src, x86_reg(dst));
+    x86func_modrm(func, src, x86_reg(dst));
 }
-void x86func_imul3(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem lhs, int32_t rhs)
+void x86func_imul3(x86func* func, uint8_t opsize, uint8_t dst, x86operand lhs, int32_t rhs)
 {
     if (opsize == X86_OPSIZE_BYTE)
         return;
@@ -486,112 +486,112 @@ void x86func_imul3(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem lhs, i
     if (rhs < INT8_MIN || rhs > INT8_MAX)
     {
         x86func_imm8(func, 0x69);
-        x86func_regmem(func, lhs, x86_reg(dst));
+        x86func_modrm(func, lhs, x86_reg(dst));
         uint8_t imm_size = (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD) ? 2 : 4;
         x86func_imm(func, (uint32_t)rhs, imm_size, &func->rhs_imm);
     }
     else
     {
         x86func_imm8(func, 0x6B);
-        x86func_regmem(func, lhs, x86_reg(dst));
+        x86func_modrm(func, lhs, x86_reg(dst));
         x86func_imm8(func, (uint8_t)rhs);
     }
 }
 
-void x86func_idiv(x86func* func, uint8_t opsize, x86_regmem src)
+void x86func_idiv(x86func* func, uint8_t opsize, x86operand src)
 {
-    if (src.type == X86_REGMEM_CONST)
+    if (src.type == X86_OPERAND_CONST)
         return;
     if (!x86func_rex_binary(func, opsize, src, x86_reg(7)))
         return;
     x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0xF6 : 0xF7);
-    x86func_regmem(func, src, x86_reg(7));
+    x86func_modrm(func, src, x86_reg(7));
 }
-void x86func_div(x86func* func, uint8_t opsize, x86_regmem src)
+void x86func_div(x86func* func, uint8_t opsize, x86operand src)
 {
-    if (src.type == X86_REGMEM_CONST)
+    if (src.type == X86_OPERAND_CONST)
         return;
     if (!x86func_rex_binary(func, opsize, src, x86_reg(6)))
         return;
     x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0xF6 : 0xF7);
-    x86func_regmem(func, src, x86_reg(6));
+    x86func_modrm(func, src, x86_reg(6));
 }
 
-void x86func_cmp(x86func* func, uint8_t opsize, x86_regmem lhs, x86_regmem rhs)
+void x86func_cmp(x86func* func, uint8_t opsize, x86operand lhs, x86operand rhs)
 {
-    if (lhs.type == X86_REGMEM_CONST)
+    if (lhs.type == X86_OPERAND_CONST)
         return;
 
     if (!x86func_rex_binary(func, opsize, lhs, rhs))
         return;
 
-    if (rhs.type == X86_REGMEM_CONST)
+    if (rhs.type == X86_OPERAND_CONST)
     {
         if (opsize == X86_OPSIZE_BYTE)
         {
             x86func_imm8(func, 0x80);
-            x86func_regmem(func, lhs, x86_reg(7));
+            x86func_modrm(func, lhs, x86_reg(7));
             x86func_imm8(func, (uint8_t)rhs.offset);
         }
         else if (rhs.offset < INT8_MIN || rhs.offset > INT8_MAX)
         {
             x86func_imm8(func, 0x81);
-            x86func_regmem(func, lhs, x86_reg(7));
+            x86func_modrm(func, lhs, x86_reg(7));
             uint8_t imm_size = (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD) ? 2 : 4;
             x86func_imm(func, rhs.offset, imm_size, &func->rhs_imm);
         }
         else
         {
             x86func_imm8(func, 0x83);
-            x86func_regmem(func, lhs, x86_reg(7));
+            x86func_modrm(func, lhs, x86_reg(7));
             x86func_imm8(func, (uint8_t)rhs.offset);
         }
     }
-    else if (rhs.type == X86_REGMEM_REG)
+    else if (rhs.type == X86_OPERAND_REG)
     {
         x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0x38 : 0x39);
-        x86func_regmem(func, lhs, rhs);
+        x86func_modrm(func, lhs, rhs);
     }
     else
     {
         x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0x3A : 0x3B);
-        x86func_regmem(func, lhs, rhs);
+        x86func_modrm(func, lhs, rhs);
     }
 }
 
-void x86func_mov(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
+void x86func_mov(x86func* func, uint8_t opsize, x86operand dst, x86operand src)
 {
     if (!x86func_rex_binary(func, opsize, dst, src))
         return;
 
-    if (src.type == X86_REGMEM_CONST)
+    if (src.type == X86_OPERAND_CONST)
     {
         // TODO: Use the shorter opcodes `0xB0 +r` and `0xB8 +r` for direct registers
         if (opsize == X86_OPSIZE_BYTE)
         {
             x86func_imm8(func, 0xC6);
-            x86func_regmem(func, dst, x86_reg(0));
+            x86func_modrm(func, dst, x86_reg(0));
             x86func_imm8(func, (uint8_t)src.offset);
         }
         else
         {
             x86func_imm8(func, 0xC7);
-            x86func_regmem(func, dst, x86_reg(0));
+            x86func_modrm(func, dst, x86_reg(0));
             if (func->mode == X86_MODE_REAL || opsize == X86_OPSIZE_WORD)
                 x86func_imm16(func, (uint16_t)src.offset);
             else
                 x86func_imm32(func, (uint32_t)src.offset);
         }
     }
-    else if (src.type == X86_REGMEM_REG)
+    else if (src.type == X86_OPERAND_REG)
     {
         x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0x88 : 0x89);
-        x86func_regmem(func, dst, src);
+        x86func_modrm(func, dst, src);
     }
     else
     {
         x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0x8A : 0x8B);
-        x86func_regmem(func, dst, src);
+        x86func_modrm(func, dst, src);
     }
 }
 

@@ -42,7 +42,7 @@
  *      x86func_label(&func, exit); // This label will lead to the code below
  *      x86func_ret(&func);
  * ```
- * It is undefined behavior to move the location of a label, or to jump to an unplaced label.
+ * It is undefined behavior to place a label multiple times or to jump a label that is never placed.
  */
 
 /// @brief x86 execution mode
@@ -140,25 +140,34 @@ enum x86_opsize
     X86_OPSIZE_QWORD,
 };
 
-enum x86_regmem_type
+enum x86_operand_type
 {
     /// @brief A register
-    X86_REGMEM_REG,
+    X86_OPERAND_REG,
     /// @brief A de-referenced register, with optional scale, index, and offset
-    X86_REGMEM_MEM,
+    X86_OPERAND_MEM,
     /// @brief A de-referenced memory offset
-    X86_REGMEM_OFFSET,
+    X86_OPERAND_OFFSET,
     /// @brief An constant value
-    X86_REGMEM_CONST,
+    X86_OPERAND_CONST,
 };
 
-/// @brief A high-level register/memory operand representation
-typedef struct x86_regmem
+/**
+ * @brief A high-level operand representation.
+ * 
+ * Different types of operands can be constructed with the following helpers:
+ * - @ref x86_reg    : Register
+ * - @ref x86_deref  : De-referenced register
+ * - @ref x86_index  : De-referenced register with index and offset (such as `[eax+ecx*8+72]`)
+ * - @ref x86_offset : De-referenced memory offset (Such as `[ds:0x1000]` or `[rip+0x1000]`)
+ * - @ref x86_const  : A constant integer value
+ */
+typedef struct x86operand
 {
     /// @brief A value from @ref x86_reg_enum.
     /// This may be the base of a memory operand.
     uint8_t reg;
-    /// @brief A value from @ref x86_regmem_type
+    /// @brief A value from @ref x86_operand_type
     uint8_t type;
     /// @brief A value from @ref x86_sib_scale
     uint8_t scale;
@@ -168,21 +177,11 @@ typedef struct x86_regmem
     /**
      * @brief A memory offset or const value, depending on @ref type.
      * 
-     * - type = @ref X86_REGMEM_CONST: This field is a const value
-     * - type = @ref X86_REGMEM_OFFSET: This field is a memory offset
+     * - type = @ref X86_OPERAND_CONST : This field is a const value
+     * - type = @ref X86_OPERAND_OFFSET : This field is a memory offset
      */
     int32_t offset;
-} x86_regmem;
-
-/// @brief A description of an x86 register, according to an ABI
-typedef struct x86_abi_reg
-{
-    const char* name;
-    /// @brief Register size, in bytes
-    uint8_t size;
-    /// @brief `true` if a callee may change this register
-    bool is_volatile;
-} x86reg;
+} x86operand;
 
 /// @brief The location of an immediate value in function code
 typedef struct x86imm
@@ -258,42 +257,43 @@ void x86func_imm64(x86func* func, uint64_t imm);
 
 /// @brief Emit: `push src`
 /// @param opsize Must be @ref X86_OPSIZE_DEFAULT or @ref X86_OPSIZE_WORD
-void x86func_push(x86func* func, uint8_t opsize, x86_regmem src);
+void x86func_push(x86func* func, uint8_t opsize, x86operand src);
 /// @brief Emit: `pop dst`
 /// @param opsize Must be @ref X86_OPSIZE_DEFAULT or @ref X86_OPSIZE_WORD
 /// @param dst Register or memory
-void x86func_pop(x86func* func, uint8_t opsize, x86_regmem dst);
+void x86func_pop(x86func* func, uint8_t opsize, x86operand dst);
 /// @brief Emit: `add dst, src`
-void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
+void x86func_add(x86func* func, uint8_t opsize, x86operand dst, x86operand src);
 /// @brief Emit: `sub dst, src`
-void x86func_sub(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
+void x86func_sub(x86func* func, uint8_t opsize, x86operand dst, x86operand src);
 /// @brief Emit: `mul src`
 /// @param src Register or memory
-void x86func_mul(x86func* func, uint8_t opsize, x86_regmem src);
+void x86func_mul(x86func* func, uint8_t opsize, x86operand src);
 /// @brief Emit: `imul src`
-/// @param src Register or memory
-void x86func_imul(x86func* func, uint8_t opsize, x86_regmem src);
+/// @param src The multiplicand, a register or memory
+void x86func_imul(x86func* func, uint8_t opsize, x86operand src);
 /// @brief Emit: `imul dst, src` (2 operands)
 /// @param opsize All values except @ref X86_OPSIZE_BYTE are supported
-/// @param dst A value from @ref x86_reg_enum
-/// @param src Any operand
-void x86func_imul2(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem src);
+/// @param dst The multiplicand, a value from @ref x86_reg_enum
+/// @param src The multiplier, any operand
+void x86func_imul2(x86func* func, uint8_t opsize, uint8_t dst, x86operand src);
 /// @brief Emit: `imul dst, lhs, rhs` (3 operands)
 /// @param dst A value from @ref x86_reg_enum
-/// @param src Register or memory
+/// @param lhs The multiplicand, a register or memory
+/// @param rhs The multiplier
 /// @param opsize All values except @ref X86_OPSIZE_BYTE are supported
-void x86func_imul3(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem lhs, int32_t rhs);
+void x86func_imul3(x86func* func, uint8_t opsize, uint8_t dst, x86operand lhs, int32_t rhs);
 /// @brief Emit: `idiv src`
 /// @param src Register or memory
-void x86func_idiv(x86func* func, uint8_t opsize, x86_regmem src);
+void x86func_idiv(x86func* func, uint8_t opsize, x86operand src);
 /// @brief Emit: `div src`
 /// @param src Register or memory
-void x86func_div(x86func* func, uint8_t opsize, x86_regmem src);
+void x86func_div(x86func* func, uint8_t opsize, x86operand src);
 /// @brief Emit: `mov dst, src`
 /// @param opsize A value from @ref x86_opsize
-void x86func_mov(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
+void x86func_mov(x86func* func, uint8_t opsize, x86operand dst, x86operand src);
 /// @brief Emit: `cmp lhs, rhs`, where `lhs` is always a non-const operand
-void x86func_cmp(x86func* func, uint8_t opsize, x86_regmem lhs, x86_regmem rhs);
+void x86func_cmp(x86func* func, uint8_t opsize, x86operand lhs, x86operand rhs);
 /// @brief Emit: `jo label`
 void x86func_jo(x86func* func, x86label label);
 /// @brief Emit: `jno label`
@@ -385,31 +385,31 @@ static inline uint8_t x86_sib(uint8_t scale, uint8_t index, uint8_t base)
 }
 
 /// @brief Make a plain register operand
-static inline x86_regmem x86_reg(uint8_t reg)
+static inline x86operand x86_reg(uint8_t reg)
 {
-    x86_regmem rm;
+    x86operand rm;
     memset(&rm, 0, sizeof(rm));
-    rm.type = X86_REGMEM_REG;
+    rm.type = X86_OPERAND_REG;
     rm.reg = reg;
     return rm;
 }
 /// @brief Make a de-referenced register operand
-static inline x86_regmem x86_deref(uint8_t reg)
+static inline x86operand x86_deref(uint8_t reg)
 {
-    x86_regmem rm;
+    x86operand rm;
     memset(&rm, 0, sizeof(rm));
-    rm.type = X86_REGMEM_MEM;
+    rm.type = X86_OPERAND_MEM;
     rm.reg = reg;
     rm.scale = X86_SIB_SCALE_1;
     rm.index = X86_REG_SP; // SP means no index will be used
     return rm;
 }
 /// @brief Make an indexed register operand: `[scale*index_reg + reg + offset]`
-static inline x86_regmem x86_index(uint8_t reg, uint8_t index_reg, uint8_t scale, int32_t offset)
+static inline x86operand x86_index(uint8_t reg, uint8_t index_reg, uint8_t scale, int32_t offset)
 {
-    x86_regmem rm;
+    x86operand rm;
     memset(&rm, 0, sizeof(rm));
-    rm.type = X86_REGMEM_MEM;
+    rm.type = X86_OPERAND_MEM;
     rm.reg = reg;
     rm.index = index_reg;
     rm.scale = scale;
@@ -422,20 +422,20 @@ static inline x86_regmem x86_index(uint8_t reg, uint8_t index_reg, uint8_t scale
  * In long mode, this represents a sign-extended offset: `[RIP+offset]`.
  * Otherwise, this represents `ds:offset`.
  */
-static inline x86_regmem x86_offset(int32_t offset)
+static inline x86operand x86_offset(int32_t offset)
 {
-    x86_regmem rm;
+    x86operand rm;
     memset(&rm, 0, sizeof(rm));
-    rm.type = X86_REGMEM_OFFSET;
+    rm.type = X86_OPERAND_OFFSET;
     rm.offset = offset;
     return rm;
 }
 /// @brief Make a sign-extended integer operand
-static inline x86_regmem x86_const(int32_t value)
+static inline x86operand x86_const(int32_t value)
 {
-    x86_regmem rm;
+    x86operand rm;
     memset(&rm, 0, sizeof(rm));
-    rm.type = X86_REGMEM_CONST;
+    rm.type = X86_OPERAND_CONST;
     rm.offset = value;
     return rm;
 }

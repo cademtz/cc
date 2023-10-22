@@ -254,8 +254,8 @@ int test_x86(void)
         x86func_create(&func, X86_MODE_PROTECTED);
         x86label loop = x86func_newlabel(&func);
         x86label exit = x86func_newlabel(&func);
-        x86_regmem eax = x86_reg(X86_REG_A);
-        x86_regmem ecx = x86_reg(X86_REG_C);
+        x86operand eax = x86_reg(X86_REG_A);
+        x86operand ecx = x86_reg(X86_REG_C);
 
         x86func_mov(&func, 0, eax, x86_const(0));       // eax = 0
         x86func_mov(&func, 0, ecx, x86_offset(0x1000)); // ecx = *(uint32_t*)(0x1000)
