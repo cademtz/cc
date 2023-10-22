@@ -259,6 +259,10 @@ void x86func_imm64(x86func* func, uint64_t imm);
 /// @brief Emit: `push src`
 /// @param opsize Must be @ref X86_OPSIZE_DEFAULT or @ref X86_OPSIZE_WORD
 void x86func_push(x86func* func, uint8_t opsize, x86_regmem src);
+/// @brief Emit: `pop dst`
+/// @param opsize Must be @ref X86_OPSIZE_DEFAULT or @ref X86_OPSIZE_WORD
+/// @param dst Register or memory
+void x86func_pop(x86func* func, uint8_t opsize, x86_regmem dst);
 /// @brief Emit: `add dst, src`
 void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
 /// @brief Emit: `sub dst, src`

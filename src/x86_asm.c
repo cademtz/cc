@@ -295,7 +295,7 @@ void x86func_push(x86func* func, uint8_t opsize, x86_regmem src)
         return; // Cannot push a dword in long mode
 
     // We don't want to emit REX.W because it's not necessary.
-    // This avoids passing our encoders a qword opsize.
+    // This avoids passing a qword opsize to the helpers.
     if (opsize == X86_OPSIZE_QWORD)
         opsize = X86_OPSIZE_DEFAULT;
     
@@ -322,6 +322,30 @@ void x86func_push(x86func* func, uint8_t opsize, x86_regmem src)
     {
         x86func_imm8(func, 0xFF);
         x86func_regmem(func, src, x86_reg(6));
+    }
+}
+
+void x86func_pop(x86func* func, uint8_t opsize, x86_regmem dst)
+{
+    if (opsize == X86_OPSIZE_BYTE)
+        return; // Cannot pop a byte
+    if (opsize == X86_OPSIZE_DWORD && func->mode == X86_MODE_LONG)
+        return; // Cannot pop a dword in long mode
+    
+    // We don't want to emit REX.W because it's not necessary.
+    // This avoids passing a qword opsize to the helpers.
+    if (opsize == X86_OPSIZE_QWORD)
+        opsize = X86_OPSIZE_DEFAULT;
+
+    if (!x86func_rex_binary(func, opsize, dst, x86_reg(0)))
+        return;
+    
+    if (dst.type == X86_REGMEM_REG)
+        x86func_imm8(func, 0x58 + (dst.reg & 7));
+    else
+    {
+        x86func_imm8(func, 0x8F);
+        x86func_regmem(func, dst, x86_reg(0));
     }
 }
 
