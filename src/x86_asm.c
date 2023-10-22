@@ -287,6 +287,44 @@ void x86func_imm64(x86func* func, uint64_t imm)
         dst[i] = (imm >> (i * 8)) & 0xFF;
 }
 
+void x86func_push(x86func* func, uint8_t opsize, x86_regmem src)
+{
+    if (opsize == X86_OPSIZE_BYTE)
+        return; // Cannot push a byte
+    if (opsize == X86_OPSIZE_DWORD && func->mode == X86_MODE_LONG)
+        return; // Cannot push a dword in long mode
+
+    // We don't want to emit REX.W because it's not necessary.
+    // This avoids passing our encoders a qword opsize.
+    if (opsize == X86_OPSIZE_QWORD)
+        opsize = X86_OPSIZE_DEFAULT;
+    
+    if (!x86func_rex_binary(func, opsize, src, x86_reg(6)))
+        return;
+    
+    if (src.type == X86_REGMEM_CONST)
+    {
+        if (src.offset < INT8_MIN || src.offset > INT8_MAX)
+        {
+            x86func_imm8(func, 0x68);
+            uint8_t imm_size = (opsize == X86_OPSIZE_WORD || func->mode == X86_MODE_REAL) ? 2 : 4;
+            x86func_imm(func, (uint32_t)src.offset, imm_size, &func->lhs_imm);
+        }
+        else
+        {
+            x86func_imm8(func, 0x6A);
+            x86func_imm8(func, (uint8_t)src.offset);
+        }
+    }
+    else if (src.type == X86_REGMEM_REG)
+        x86func_imm8(func, 0x50 + (src.reg & 7));
+    else
+    {
+        x86func_imm8(func, 0xFF);
+        x86func_regmem(func, src, x86_reg(6));
+    }
+}
+
 void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
 {
     // dst may not be a constant

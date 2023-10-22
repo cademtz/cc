@@ -256,6 +256,9 @@ void x86func_imm32(x86func* func, uint32_t imm);
 /// @brief Emit a 64-bit immediate value
 void x86func_imm64(x86func* func, uint64_t imm);
 
+/// @brief Emit: `push src`
+/// @param opsize Must be @ref X86_OPSIZE_DEFAULT or @ref X86_OPSIZE_WORD
+void x86func_push(x86func* func, uint8_t opsize, x86_regmem src);
 /// @brief Emit: `add dst, src`
 void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
 /// @brief Emit: `sub dst, src`
