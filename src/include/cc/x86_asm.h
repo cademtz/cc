@@ -260,6 +260,9 @@ void x86func_imm64(x86func* func, uint64_t imm);
 void x86func_add(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
 /// @brief Emit: `sub dst, src`
 void x86func_sub(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);
+/// @brief Emit: `mul src`
+/// @param src Register or memory
+void x86func_mul(x86func* func, uint8_t opsize, x86_regmem src);
 /// @brief Emit: `imul src`
 /// @param src Register or memory
 void x86func_imul(x86func* func, uint8_t opsize, x86_regmem src);
@@ -273,6 +276,12 @@ void x86func_imul2(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem src);
 /// @param src Register or memory
 /// @param opsize All values except @ref X86_OPSIZE_BYTE are supported
 void x86func_imul3(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem lhs, int32_t rhs);
+/// @brief Emit: `idiv src`
+/// @param src Register or memory
+void x86func_idiv(x86func* func, uint8_t opsize, x86_regmem src);
+/// @brief Emit: `div src`
+/// @param src Register or memory
+void x86func_div(x86func* func, uint8_t opsize, x86_regmem src);
 /// @brief Emit: `mov dst, src`
 /// @param opsize A value from @ref x86_opsize
 void x86func_mov(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src);

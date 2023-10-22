@@ -372,6 +372,15 @@ void x86func_sub(x86func* func, uint8_t opsize, x86_regmem dst, x86_regmem src)
     }
 }
 
+void x86func_mul(x86func* func, uint8_t opsize, x86_regmem src)
+{
+    if (src.type == X86_REGMEM_CONST)
+        return;
+    if (!x86func_rex_binary(func, opsize, src, x86_reg(4)))
+        return;
+    x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0xF6 : 0xF7);
+    x86func_regmem(func, src, x86_reg(4));
+}
 void x86func_imul(x86func* func, uint8_t opsize, x86_regmem src)
 {
     if (src.type == X86_REGMEM_CONST)
@@ -381,7 +390,6 @@ void x86func_imul(x86func* func, uint8_t opsize, x86_regmem src)
     x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0xF6 : 0xF7);
     x86func_regmem(func, src, x86_reg(5));
 }
-
 void x86func_imul2(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem src)
 {
     if (src.type == X86_REGMEM_CONST)
@@ -405,7 +413,6 @@ void x86func_imul2(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem src)
     x86func_imm8(func, 0xAF);
     x86func_regmem(func, src, x86_reg(dst));
 }
-
 void x86func_imul3(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem lhs, int32_t rhs)
 {
     if (opsize == X86_OPSIZE_BYTE)
@@ -427,6 +434,25 @@ void x86func_imul3(x86func* func, uint8_t opsize, uint8_t dst, x86_regmem lhs, i
         x86func_regmem(func, lhs, x86_reg(dst));
         x86func_imm8(func, (uint8_t)rhs);
     }
+}
+
+void x86func_idiv(x86func* func, uint8_t opsize, x86_regmem src)
+{
+    if (src.type == X86_REGMEM_CONST)
+        return;
+    if (!x86func_rex_binary(func, opsize, src, x86_reg(7)))
+        return;
+    x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0xF6 : 0xF7);
+    x86func_regmem(func, src, x86_reg(7));
+}
+void x86func_div(x86func* func, uint8_t opsize, x86_regmem src)
+{
+    if (src.type == X86_REGMEM_CONST)
+        return;
+    if (!x86func_rex_binary(func, opsize, src, x86_reg(6)))
+        return;
+    x86func_imm8(func, opsize == X86_OPSIZE_BYTE ? 0xF6 : 0xF7);
+    x86func_regmem(func, src, x86_reg(6));
 }
 
 void x86func_cmp(x86func* func, uint8_t opsize, x86_regmem lhs, x86_regmem rhs)
