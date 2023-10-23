@@ -84,6 +84,9 @@ enum x86_reg_enum
     // Extended 128-bit registers (Long mode only, requires a prefix)
     X86_REG_XMM8, X86_REG_XMM9, X86_REG_XMM10, X86_REG_XMM11,
     X86_REG_XMM12, X86_REG_XMM13, X86_REG_XMM14, X86_REG_XMM15,
+
+    /// @brief The number of (supported) x86 registers
+    X86_NUM_REGISTERS
 };
 
 /// @brief x86 operand mode (the 'Mod' in 'ModRM')
