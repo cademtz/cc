@@ -200,3 +200,150 @@ size_t cc_dynamicstream_write(cc_stream* self, const uint8_t* data, size_t size)
     s->writepos += size;
     return size;
 }
+
+static inline uint32_t* cc_hmap32_indices(const cc_hmap32* map) { return (uint32_t*)map->bucket; }
+static inline uint8_t* cc_hmap32_flags(const cc_hmap32* map) {
+    return (uint8_t*)(cc_hmap32_indices(map) + map->cap_bucket);
+}
+static inline uint32_t cc_hmap32_hash(const cc_hmap32* map, uint32_t key) {
+    return (map->cap_bucket == 0) ? 0 : cc_fnv1a_u32(key) % map->cap_bucket;
+}
+/// @brief Insert an entry into the `map->entries` array, shifting necessary indices
+static inline void cc_hmap32_insert(cc_hmap32* map, uint32_t index, cc_hmap32entry entry)
+{
+    ++map->num_entries;
+    if (map->num_entries >= map->cap_entries)
+    {
+        map->cap_entries = map->num_entries;
+        map->entries = (cc_hmap32entry*)realloc(map->entries, map->cap_entries * sizeof(map->entries[0]));
+    }
+    
+    if (index < map->num_entries - 1)
+    {
+        memmove(map->entries + index + 1, map->entries + index, (map->num_entries - index - 1) * sizeof(map->entries[0]));
+
+        // We just shifted all entries (at-or-after `index`) upwards by one.
+        // Now we must shift indices in the bucket to match.
+        uint32_t* indices = cc_hmap32_indices(map);
+        for (uint32_t i = 0; i < map->cap_bucket; ++i)
+        {
+            // Don't shift an equal index.
+            // Our new entry will replace it as the first in a group of colliding entries
+            if (indices[i] > index)
+                ++indices[i];
+        }
+    }
+    memcpy(map->entries + index, &entry, sizeof(entry));
+}
+
+/// @brief Resize the map's bucket to `map->cap_entries * CC_HMAP_MAXBUCKET`
+static void cc_hmap32_grow(cc_hmap32* map)
+{
+    map->cap_bucket = (size_t)(map->cap_entries * CC_HMAP_MAXBUCKET) + 10;
+    size_t new_cap_bytes = map->cap_bucket * (sizeof(uint32_t) + sizeof(uint8_t));
+    map->bucket = realloc(map->bucket, new_cap_bytes);
+
+    // 0-initialize the flags array (indicates all bucket indexes are empty)
+    uint32_t* indices = cc_hmap32_indices(map);
+    uint8_t* flags_array = cc_hmap32_flags(map);
+    memset(flags_array, 0, map->cap_bucket);
+
+    // Re-add all entries to the bucket
+    for (uint32_t i = 0; i < map->num_entries; ++i)
+    {
+        uint32_t hash = cc_hmap32_hash(map, map->entries[i].key);
+        uint8_t* flags = &flags_array[hash];
+        uint32_t* index = &indices[hash];
+
+        // Entries are already grouped by hash, so only use the first index.
+        // (Basically: Don't rewrite the same index, otherwise it won't be the first entry within its group)
+        if (*flags & CC_HMAP_FLAG_EXISTS)
+            *flags |= CC_HMAP_FLAG_COLLISION;
+        else
+            *index = i;
+        *flags |= CC_HMAP_FLAG_EXISTS;
+    }
+}
+
+void cc_hmap32_destroy(cc_hmap32* map)
+{
+    free(map->bucket);
+    free(map->entries);
+}
+
+void cc_hmap32_clear(cc_hmap32* map)
+{
+    uint8_t* flags = cc_hmap32_flags(map);
+    memset(flags, 0, map->cap_bucket * sizeof(flags[0]));
+    map->num_entries = 0;
+}
+
+bool cc_hmap32_swap(cc_hmap32* map, uint32_t key, uint32_t value, uint32_t* old_value)
+{
+    if (map->cap_bucket < (size_t)(map->cap_entries * CC_HMAP_MINBUCKET) + 1)
+        cc_hmap32_grow(map);
+    
+    uint32_t hash = cc_hmap32_hash(map, key);
+    uint8_t* flags = &cc_hmap32_flags(map)[hash];
+    uint32_t* index = &cc_hmap32_indices(map)[hash];
+
+    if ((*flags & (CC_HMAP_FLAG_EXISTS | CC_HMAP_FLAG_COLLISION)) == 0)
+        *index = map->num_entries;
+    else
+    {
+        // Is our entry unique?
+        for (size_t i = *index; i < map->num_entries; ++i)
+        {
+            cc_hmap32entry* next_entry = &map->entries[*index];
+            if (cc_hmap32_hash(map, next_entry->key) != hash)
+                break; // Our key is definitely unique
+            
+            if (next_entry->key == key)
+            {
+                next_entry->value = value;
+                return true;
+            }
+        }
+
+        *flags |= CC_HMAP_FLAG_COLLISION;
+    }
+
+    cc_hmap32entry entry = {key, value};
+    cc_hmap32_insert(map, *index, entry);
+    return false;
+}
+
+bool cc_hmap32_put(cc_hmap32* map, uint32_t key, uint32_t value)
+{
+    uint32_t old_value;
+    return cc_hmap32_swap(map, key, value, &old_value);
+}
+
+uint32_t cc_hmap32_get_default(const cc_hmap32* map, uint32_t key, uint32_t default_value)
+{
+    uint32_t hash = cc_hmap32_hash(map, key);
+    uint8_t flags = cc_hmap32_flags(map)[hash];
+    uint32_t index = cc_hmap32_indices(map)[hash];
+    
+    if ((flags & CC_HMAP_FLAG_EXISTS) == 0)
+        return default_value;
+    if ((flags & CC_HMAP_FLAG_COLLISION) == 0)
+    {
+        uint32_t result = default_value;
+        if (map->entries[index].key == key)
+            result = map->entries[index].value;
+        return result;
+    }
+    
+    // Iterate and check all keys
+    for (uint32_t i = index; i < map->num_entries; ++i)
+    {
+        const cc_hmap32entry* entry = &map->entries[i];
+        if (cc_hmap32_hash(map, entry->key) != hash)
+            break; // The key does not exist
+        if (entry->key == key)
+            return entry->value;
+    }
+
+    return default_value;
+}

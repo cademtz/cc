@@ -133,3 +133,68 @@ static size_t cc_stream_write(cc_stream* stream, const uint8_t* data, size_t siz
 static size_t cc_stream_read(cc_stream* stream, uint8_t* buffer, size_t size) {
     return stream->read(stream, buffer, size);
 }
+
+enum cc_hmap_flag
+{
+    CC_HMAP_FLAG_EXISTS = 1 << 0,
+    CC_HMAP_FLAG_COLLISION = 1 << 1,
+};
+
+/// @brief The bucket will grow when `cap_bucket < cap_entries * CC_HMAP_MINBUCKET`
+#define CC_HMAP_MINBUCKET 1.2
+/// @brief The bucket will resize to `cap_entries * CC_HMAP_MAXBUCKET`
+#define CC_HMAP_MAXBUCKET 1.4
+#define CC_HMAP_MINENTRIES 1.2
+
+typedef struct cc_hmap32entry
+{
+    uint32_t key;
+    uint32_t value;
+} cc_hmap32entry;
+
+/// @brief A hashmap with 32-bit integer keys and values
+typedef struct cc_hmap32
+{
+    /**
+     * @brief Two arrays taped together.
+     * 
+     * - A `uint32_t` index array where: `entry = entries[index_array[hash]]`
+     * - A `uint8_t` flags array where: `flags = flags_array[hash]`
+     * The `flags_array` is found after the index array.
+     */
+    void* bucket;
+    /**
+     * @brief Array containing all entries grouped by hash.
+     * 
+     * When a bucket points at a collision
+     */
+    cc_hmap32entry* entries;
+    /// @brief Capacity of the `bucket` array
+    size_t cap_bucket;
+    /// @brief Number of items in `entries`
+    uint32_t num_entries;
+    /// @brief Item capacity of `entries`. This increments with each new entry does not shrink.
+    uint32_t cap_entries;
+} cc_hmap32;
+
+/// @brief 0-initialize the map
+static inline void cc_hmap32_create(cc_hmap32* map) {
+    memset(map, 0, sizeof(*map));
+}
+/// @brief Free memory and 0-initialize the map for later use
+void cc_hmap32_destroy(cc_hmap32* map);
+/// @brief Empty all values, potentially making room for new ones
+void cc_hmap32_clear(cc_hmap32* map);
+/// @brief Get the number of entries in the map
+static inline size_t cc_hmap32_size(const cc_hmap32* map) { return map->num_entries; }
+/// @brief Put a new value or replace an old value
+/// @return `true` when a value is replaced
+bool cc_hmap32_put(cc_hmap32* map, uint32_t key, uint32_t value);
+/// @brief Put a new value and return the old value (if any)
+/// @param old_value Pointer to store the old value
+/// @return `true` if a value is replaced and `old_value` is set.
+bool cc_hmap32_swap(cc_hmap32* map, uint32_t key, uint32_t value, uint32_t* old_value);
+/// @brief Put a new value
+/// @return `true` if a value is replaced
+bool cc_hmap32_put(cc_hmap32* map, uint32_t key, uint32_t value);
+uint32_t cc_hmap32_get_default(const cc_hmap32* map, uint32_t key, uint32_t default_value);
