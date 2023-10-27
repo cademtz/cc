@@ -136,8 +136,7 @@ static size_t cc_stream_read(cc_stream* stream, uint8_t* buffer, size_t size) {
 
 enum cc_hmap_flag
 {
-    CC_HMAP_FLAG_EXISTS = 1 << 0,
-    CC_HMAP_FLAG_COLLISION = 1 << 1,
+    CC_HMAP_FLAG_EXISTS = 1 << 0
 };
 
 /// @brief The bucket will grow when `cap_bucket < cap_entries * CC_HMAP_MINBUCKET`

@@ -255,11 +255,9 @@ static void cc_hmap32_grow(cc_hmap32* map)
         uint8_t* flags = &flags_array[hash];
         uint32_t* index = &indices[hash];
 
-        // Entries are already grouped by hash, so only use the first index.
-        // (Basically: Don't rewrite the same index, otherwise it won't be the first entry within its group)
-        if (*flags & CC_HMAP_FLAG_EXISTS)
-            *flags |= CC_HMAP_FLAG_COLLISION;
-        else
+        // Only set an index the first time.
+        // The first entry with this this hash will have entries with colliding hashes following it.
+        if ((*flags & CC_HMAP_FLAG_EXISTS) == 0)
             *index = i;
         *flags |= CC_HMAP_FLAG_EXISTS;
     }
@@ -287,7 +285,7 @@ bool cc_hmap32_swap(cc_hmap32* map, uint32_t key, uint32_t value, uint32_t* old_
     uint8_t* flags = &cc_hmap32_flags(map)[hash];
     uint32_t* index = &cc_hmap32_indices(map)[hash];
 
-    if ((*flags & (CC_HMAP_FLAG_EXISTS | CC_HMAP_FLAG_COLLISION)) == 0)
+    if ((*flags & CC_HMAP_FLAG_EXISTS) == 0)
         *index = map->num_entries;
     else
     {
@@ -304,10 +302,9 @@ bool cc_hmap32_swap(cc_hmap32* map, uint32_t key, uint32_t value, uint32_t* old_
                 return true;
             }
         }
-
-        *flags |= CC_HMAP_FLAG_COLLISION;
     }
 
+    *flags |= CC_HMAP_FLAG_EXISTS;
     cc_hmap32entry entry = {key, value};
     cc_hmap32_insert(map, *index, entry);
     return false;
@@ -327,22 +324,17 @@ uint32_t cc_hmap32_get_default(const cc_hmap32* map, uint32_t key, uint32_t defa
     
     if ((flags & CC_HMAP_FLAG_EXISTS) == 0)
         return default_value;
-    if ((flags & CC_HMAP_FLAG_COLLISION) == 0)
-    {
-        uint32_t result = default_value;
-        if (map->entries[index].key == key)
-            result = map->entries[index].value;
-        return result;
-    }
     
     // Iterate and check all keys
     for (uint32_t i = index; i < map->num_entries; ++i)
     {
         const cc_hmap32entry* entry = &map->entries[i];
-        if (cc_hmap32_hash(map, entry->key) != hash)
-            break; // The key does not exist
         if (entry->key == key)
             return entry->value;
+        // Colliding hashes are placed after the index found in the bucket.
+        // If the next entry doesn't collide, we're done searching.
+        if (cc_hmap32_hash(map, entry->key) != hash)
+            break;
     }
 
     return default_value;

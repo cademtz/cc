@@ -1,5 +1,6 @@
 #include "test.h"
 #include <cc/lib.h>
+#include <stdio.h>
 
 int test_hmap(void)
 {
