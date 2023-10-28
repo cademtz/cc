@@ -217,7 +217,7 @@ static inline uint32_t cc_hmap32_hash(const cc_hmap32* map, uint32_t key) {
 static cc_hmap32entry* cc_hmap32_append(cc_hmap32* map, uint32_t key, uint32_t value)
 {
     ++map->num_entries;
-    if (map->num_entries >= map->cap_entries)
+    if (map->num_entries > map->cap_entries)
     {
         map->cap_entries = map->num_entries;
         map->entries = (cc_hmap32entry*)realloc(map->entries, map->cap_entries * sizeof(map->entries[0]));
@@ -234,7 +234,7 @@ static cc_hmap32entry* cc_hmap32_append(cc_hmap32* map, uint32_t key, uint32_t v
 /// @brief Resize the map's bucket to `map->cap_entries * CC_HMAP_MAXBUCKET`
 static void cc_hmap32_grow(cc_hmap32* map)
 {
-    map->cap_bucket = (size_t)(map->cap_entries * CC_HMAP_MAXBUCKET) + 13000;
+    map->cap_bucket = (size_t)(map->cap_entries * CC_HMAP_MAXBUCKET) + 1;
     size_t new_cap_bytes = map->cap_bucket * (sizeof(uint32_t) + sizeof(uint8_t));
     map->bucket = realloc(map->bucket, new_cap_bytes);
 
@@ -314,23 +314,97 @@ bool cc_hmap32_put(cc_hmap32* map, uint32_t key, uint32_t value)
     return cc_hmap32_swap(map, key, value, &old_value);
 }
 
+bool cc_hmap32_delete(cc_hmap32* map, uint32_t key)
+{
+    uint32_t hash = cc_hmap32_hash(map, key);
+    uint32_t index = cc_hmap32_get_index(map, key);
+    uint32_t parent_index = cc_hmap32_indices(map)[hash];
+
+    if (index == UINT32_MAX)
+        return false;
+        
+    cc_hmap32entry* entry = &map->entries[index]; // Entry with our key
+
+    // Linked list deletion:
+    // If our key is the only node, "delete" the whole list
+    if (index == parent_index)
+    {
+        cc_hmap32_indices(map)[hash] = entry->next_index;
+        if (entry->next_index == UINT32_MAX)
+            cc_hmap32_flags(map)[hash] = 0;
+    }
+    else // Otherwise, iterate the list to find our node and unlink it
+    {
+        while (1)
+        {
+            cc_hmap32entry* next_entry = &map->entries[parent_index];
+            if (next_entry->next_index == index)
+            {
+                next_entry->next_index = entry->next_index;
+                break;
+            }
+            parent_index = next_entry->next_index;
+        }
+    }
+
+    // Finally, remove our entry from the vector
+    --map->num_entries;
+    if (index == map->num_entries)
+        return true;
+    
+    // Our entry is in the middle, so indexes above the deletion must be shifted down
+    memmove(map->entries + index, map->entries + index + 1, (map->num_entries - index) * sizeof(map->entries[0]));
+    for (uint32_t i = 0; i < map->num_entries; ++i)
+    {
+        cc_hmap32entry* entry = &map->entries[i];
+        if (entry->next_index != UINT32_MAX && entry->next_index > index)
+            --entry->next_index;
+    }
+
+    uint32_t* indices = cc_hmap32_indices(map);
+    for (size_t i = 0; i < map->cap_bucket; ++i)
+    {
+        if (indices[i] > index)
+            --indices[i];
+    }
+
+    return true;
+}
+
 uint32_t cc_hmap32_get_default(const cc_hmap32* map, uint32_t key, uint32_t default_value)
+{
+    uint32_t index = cc_hmap32_get_index(map, key);
+    if (index == UINT32_MAX)
+        return default_value;
+    return map->entries[index].value;
+}
+
+uint32_t cc_hmap32_get_index(const cc_hmap32* map, uint32_t key)
 {
     uint32_t hash = cc_hmap32_hash(map, key);
     uint8_t flags = cc_hmap32_flags(map)[hash];
     uint32_t index = cc_hmap32_indices(map)[hash];
     
     if ((flags & CC_HMAP_FLAG_EXISTS) == 0)
-        return default_value;
+        return UINT32_MAX;
     
     uint32_t next_index = index;
     do
     {
         const cc_hmap32entry* next_entry = &map->entries[next_index];
         if (next_entry->key == key)
-            return next_entry->value;
+            break;
         next_index = next_entry->next_index;
     } while (next_index != UINT32_MAX);
     
-    return default_value;
+    return next_index;
+}
+
+bool cc_hmap32_get(const cc_hmap32* map, uint32_t key, uint32_t* out_value)
+{
+    uint32_t index = cc_hmap32_get_index(map, key);
+    if (index == UINT32_MAX)
+        return false;
+    *out_value = map->entries[index].value;
+    return true;
 }
