@@ -11,7 +11,20 @@ int test_hmap(void)
     const uint32_t upper_bound = 10000;
 
     for (uint32_t i = lower_bound; i <= upper_bound; ++i)
-        cc_hmap32_put(&map, i, i);
+    {
+        bool replaced = cc_hmap32_put(&map, i, i);
+        test_assert("Expected a unique key that does not replace any existing keys", !replaced);
+    }
+    
+    size_t utilized = 0;
+    for (size_t i = 0; i < map.cap_bucket; ++i)
+    {
+        uint8_t* flags = (uint8_t*)((uint32_t*)map.bucket + map.cap_bucket);
+        if (flags[i])
+            ++utilized;
+    }
+
+    printf("%zu/%zu (%.2f%%) bucket indices utilized\n", utilized, map.num_entries, utilized * 100.f / map.num_entries);
     
     for (uint32_t i = lower_bound; i <= upper_bound; ++i)
     {

@@ -136,7 +136,7 @@ static size_t cc_stream_read(cc_stream* stream, uint8_t* buffer, size_t size) {
 
 enum cc_hmap_flag
 {
-    CC_HMAP_FLAG_EXISTS = 1 << 0
+    CC_HMAP_FLAG_EXISTS = 1 << 0,
 };
 
 /// @brief The bucket will grow when `cap_bucket < cap_entries * CC_HMAP_MINBUCKET`
@@ -149,9 +149,15 @@ typedef struct cc_hmap32entry
 {
     uint32_t key;
     uint32_t value;
+    /// @brief The next entry with the same hash
+    uint32_t next_index;
 } cc_hmap32entry;
 
-/// @brief A hashmap with 32-bit integer keys and values
+/**
+ * @brief A hashmap with 32-bit integer keys and values.
+ * 
+ * A maximum of `UINT32_MAX - 1` entries can be held (which would require over 48 gigabytes).
+ */
 typedef struct cc_hmap32
 {
     /**

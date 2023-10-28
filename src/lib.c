@@ -106,6 +106,11 @@ uint32_t cc_fnv1a_32(const void* data, size_t size)
     return hash;
 }
 uint32_t cc_fnv1a_u32(uint32_t i) {
+    uint8_t bytes[4];
+    bytes[3] = i & 0xFF;
+    bytes[2] = (i >> 8) & 0xFF;
+    bytes[1] = (i >> 16) & 0xFF;
+    bytes[0] = (i >> 24) & 0xFF;
     return cc_fnv1a_32(&i, sizeof(i));
 }
 
@@ -206,10 +211,10 @@ static inline uint8_t* cc_hmap32_flags(const cc_hmap32* map) {
     return (uint8_t*)(cc_hmap32_indices(map) + map->cap_bucket);
 }
 static inline uint32_t cc_hmap32_hash(const cc_hmap32* map, uint32_t key) {
-    return (map->cap_bucket == 0) ? 0 : cc_fnv1a_u32(key) % map->cap_bucket;
+    return (map->cap_bucket == 0) ? 0 : cc_fnv1a_u32(key) % (uint32_t)map->cap_bucket;
 }
-/// @brief Insert an entry into the `map->entries` array, shifting necessary indices
-static inline void cc_hmap32_insert(cc_hmap32* map, uint32_t index, cc_hmap32entry entry)
+/// @brief Append an entry to the `map->entries` vector
+static cc_hmap32entry* cc_hmap32_append(cc_hmap32* map, uint32_t key, uint32_t value)
 {
     ++map->num_entries;
     if (map->num_entries >= map->cap_entries)
@@ -218,28 +223,18 @@ static inline void cc_hmap32_insert(cc_hmap32* map, uint32_t index, cc_hmap32ent
         map->entries = (cc_hmap32entry*)realloc(map->entries, map->cap_entries * sizeof(map->entries[0]));
     }
     
-    if (index < map->num_entries - 1)
-    {
-        memmove(map->entries + index + 1, map->entries + index, (map->num_entries - index - 1) * sizeof(map->entries[0]));
-
-        // We just shifted all entries (at-or-after `index`) upwards by one.
-        // Now we must shift indices in the bucket to match.
-        uint32_t* indices = cc_hmap32_indices(map);
-        for (uint32_t i = 0; i < map->cap_bucket; ++i)
-        {
-            // Don't shift an equal index.
-            // Our new entry will replace it as the first in a group of colliding entries
-            if (indices[i] > index)
-                ++indices[i];
-        }
-    }
-    memcpy(map->entries + index, &entry, sizeof(entry));
+    cc_hmap32entry* entry = &map->entries[map->num_entries - 1];
+    memset(entry, 0, sizeof(entry));
+    entry->key = key;
+    entry->value = value;
+    entry->next_index = UINT32_MAX;
+    return entry;
 }
 
 /// @brief Resize the map's bucket to `map->cap_entries * CC_HMAP_MAXBUCKET`
 static void cc_hmap32_grow(cc_hmap32* map)
 {
-    map->cap_bucket = (size_t)(map->cap_entries * CC_HMAP_MAXBUCKET) + 10;
+    map->cap_bucket = (size_t)(map->cap_entries * CC_HMAP_MAXBUCKET) + 13000;
     size_t new_cap_bytes = map->cap_bucket * (sizeof(uint32_t) + sizeof(uint8_t));
     map->bucket = realloc(map->bucket, new_cap_bytes);
 
@@ -254,11 +249,12 @@ static void cc_hmap32_grow(cc_hmap32* map)
         uint32_t hash = cc_hmap32_hash(map, map->entries[i].key);
         uint8_t* flags = &flags_array[hash];
         uint32_t* index = &indices[hash];
+        cc_hmap32entry* entry = &map->entries[i];
 
-        // Only set an index the first time.
-        // The first entry with this this hash will have entries with colliding hashes following it.
-        if ((*flags & CC_HMAP_FLAG_EXISTS) == 0)
-            *index = i;
+        entry->next_index = UINT32_MAX;
+        if (*flags & CC_HMAP_FLAG_EXISTS)
+            entry->next_index = *index;
+        *index = i;
         *flags |= CC_HMAP_FLAG_EXISTS;
     }
 }
@@ -289,24 +285,26 @@ bool cc_hmap32_swap(cc_hmap32* map, uint32_t key, uint32_t value, uint32_t* old_
         *index = map->num_entries;
     else
     {
-        // Is our entry unique?
-        for (size_t i = *index; i < map->num_entries; ++i)
+        // Our key *might* be in list. Check colliding entries.
+        cc_hmap32entry* next_entry;
+        uint32_t next_index = *index;
+        do
         {
-            cc_hmap32entry* next_entry = &map->entries[*index];
-            if (cc_hmap32_hash(map, next_entry->key) != hash)
-                break; // Our key is definitely unique
-            
+            next_entry = &map->entries[next_index];
             if (next_entry->key == key)
             {
                 next_entry->value = value;
                 return true;
             }
-        }
+            next_index = next_entry->next_index;
+        } while (next_index != UINT32_MAX);
+        
+        // Our key was not in the list, but it does collide
+        next_entry->next_index = map->num_entries;
     }
 
     *flags |= CC_HMAP_FLAG_EXISTS;
-    cc_hmap32entry entry = {key, value};
-    cc_hmap32_insert(map, *index, entry);
+    cc_hmap32_append(map, key, value);
     return false;
 }
 
@@ -325,17 +323,14 @@ uint32_t cc_hmap32_get_default(const cc_hmap32* map, uint32_t key, uint32_t defa
     if ((flags & CC_HMAP_FLAG_EXISTS) == 0)
         return default_value;
     
-    // Iterate and check all keys
-    for (uint32_t i = index; i < map->num_entries; ++i)
+    uint32_t next_index = index;
+    do
     {
-        const cc_hmap32entry* entry = &map->entries[i];
-        if (entry->key == key)
-            return entry->value;
-        // Colliding hashes are placed after the index found in the bucket.
-        // If the next entry doesn't collide, we're done searching.
-        if (cc_hmap32_hash(map, entry->key) != hash)
-            break;
-    }
-
+        const cc_hmap32entry* next_entry = &map->entries[next_index];
+        if (next_entry->key == key)
+            return next_entry->value;
+        next_index = next_entry->next_index;
+    } while (next_index != UINT32_MAX);
+    
     return default_value;
 }
