@@ -200,9 +200,20 @@ static inline size_t cc_hmap32_size(const cc_hmap32* map) { return map->num_entr
 bool cc_hmap32_put(cc_hmap32* map, uint32_t key, uint32_t value);
 /// @brief Put a new value and return the old value (if any)
 /// @param old_value Pointer to store the old value
-/// @return `true` if a value is replaced and `old_value` is set.
+/// @return `true` if a value is replaced and `old_value` is set
 bool cc_hmap32_swap(cc_hmap32* map, uint32_t key, uint32_t value, uint32_t* old_value);
 /// @brief Put a new value
 /// @return `true` if a value is replaced
 bool cc_hmap32_put(cc_hmap32* map, uint32_t key, uint32_t value);
+/// @brief Delete a value by key
+/// @return `true` if a value is deleted
+bool cc_hmap32_delete(cc_hmap32* map, uint32_t key);
+/// @brief Get a value if `key` exists, otherwise return `default_value`
 uint32_t cc_hmap32_get_default(const cc_hmap32* map, uint32_t key, uint32_t default_value);
+/// @brief Get the index of the entry for `key`,
+/// @return The index, or `UINT32_MAX` if `key` does not exist
+uint32_t cc_hmap32_get_index(const cc_hmap32* map, uint32_t key);
+/// @brief Get the value for `key`
+/// @param out_value Pointer to store the value
+/// @return `true` if `key` exists and `out_value` is set
+bool cc_hmap32_get(const cc_hmap32* map, uint32_t key, uint32_t* out_value);
