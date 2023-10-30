@@ -16,8 +16,8 @@
  *      x86func_create(&func, X86_MODE_LONG);
  *      x86func_add(&func, X86_OPSIZE_QWORD, x86_reg(X86_REG_A), x86_reg(X86_REG_R15));
  * ```
- * The value @ref X86_OPSIZE_QWORD is an explicit override. It can be any value from @ref x86_opsize.
- * Using @ref X86_OPSIZE_BYTE would add two bytes instead of two qwords.
+ * The value @ref X86_OPSIZE_QWORD is an explicit override to add two QWORDS.
+ * Similarly, using @ref X86_OPSIZE_BYTE would add two bytes.
  * This sample will assemble `add al, r15b`:
  * ```
  *      x86func_add(&func, X86_OPSIZE_BYTE, x86_reg(X86_REG_A), x86_reg(X86_REG_R15));
@@ -297,6 +297,7 @@ void x86func_div(x86func* func, uint8_t opsize, x86operand src);
 void x86func_mov(x86func* func, uint8_t opsize, x86operand dst, x86operand src);
 /// @brief Emit: `cmp lhs, rhs`, where `lhs` is always a non-const operand
 void x86func_cmp(x86func* func, uint8_t opsize, x86operand lhs, x86operand rhs);
+void x86func_jmp(x86func* func, x86label label);
 /// @brief Emit: `jo label`
 void x86func_jo(x86func* func, x86label label);
 /// @brief Emit: `jno label`
@@ -407,7 +408,13 @@ static inline x86operand x86_deref(uint8_t reg)
     rm.index = X86_REG_SP; // SP means no index will be used
     return rm;
 }
-/// @brief Make an indexed register operand: `[scale*index_reg + reg + offset]`
+/**
+ * @brief Make an indexed register operand: `[reg + index_reg*scale + offset]`
+ * @param reg The base register
+ * @param index_reg An index. If the value is @ref X86_REG_SP, then no index is used.
+ * @param scale A value from @ref x86_sib_scale
+ * @param offset A constant offset
+ */
 static inline x86operand x86_index(uint8_t reg, uint8_t index_reg, uint8_t scale, int32_t offset)
 {
     x86operand rm;
@@ -441,4 +448,11 @@ static inline x86operand x86_const(int32_t value)
     rm.type = X86_OPERAND_CONST;
     rm.offset = value;
     return rm;
+}
+/// @brief Get the size of a pointer for a given execution mode
+/// @param mode A value from @ref x86_mode
+static inline uint8_t x86_ptrsize(uint8_t mode)
+{
+    uint8_t sizes[] = { 2, 4, 8 };
+    return sizes[mode];
 }

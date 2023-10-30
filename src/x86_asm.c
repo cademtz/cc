@@ -595,6 +595,58 @@ void x86func_mov(x86func* func, uint8_t opsize, x86operand dst, x86operand src)
     }
 }
 
+/// @brief Interal jmp impl
+/// @param offset Offset relative to the end of the instruction
+static void x86func__jmp(x86func* func, int32_t offset)
+{
+    if (offset < INT8_MIN || offset > INT8_MAX)
+    {
+        x86func_imm8(func, 0xE9);
+        x86func_imm(func, offset, func->mode >= X86_MODE_PROTECTED ? 4 : 2, &func->lhs_imm);
+    }
+    else
+    {
+        x86func_imm8(func, 0xEB);
+        x86func_imm8(func, (uint8_t)offset);
+    }
+}
+
+/// @brief Internal jmp impl, except `offset` is simpler to use
+/// @param offset Offset relative to the start of the instruction
+static void x86func__jmp_simpler(x86func* func, int32_t offset)
+{
+    // This new offset is relative to the end of the instruction.
+    // Assume the instruction will be 2 bytes long
+    int32_t post_offset = offset - 2;
+    size_t ins_begin = func->size_code;
+    x86func__jmp(func, post_offset);
+
+    // The offset does not fit in 1 byte. A larger instruction was emitted.
+    if (post_offset < INT8_MIN || post_offset > INT8_MAX)
+    {
+        // Rewrite the offset, adjusted using the new instruction size.
+        // We know the immediate is emitted at the end, and only 16- or 32-bit.
+        size_t ins_size = func->size_code - ins_begin;
+        post_offset = offset - ins_size;
+        func->writepos = func->lhs_imm.offset;
+        if (func->lhs_imm.size == 2)
+            x86func_imm16(func, (uint16_t)offset);
+        else
+            x86func_imm32(func, (uint32_t)offset);
+    }
+}
+
+void x86func_jmp(x86func* func, x86label label)
+{
+    if (func->labels[label] != UINT32_MAX) // The label is defined
+        x86func__jmp_simpler(func, (int32_t)(func->labels[label] - func->size_code));
+    else  // The label is undefined. Reserve a 16-bit jump (expands to 32-bit based on execution mode)
+    {
+        x86func__jmp(func, INT16_MAX);
+        x86func__labelref(func, label, &func->lhs_imm);
+    }
+}
+
 /// @brief Internal jcc impl
 /// @param offset Offset relative to the end of the instruction
 /// @param nibble The lower opcode nibble, as defined in the AMD64 manual

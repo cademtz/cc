@@ -5,6 +5,10 @@
 /**
  * @file
  * @brief Generate x86 code from IR.
+ * 
+ * Default calling conventions are provided:
+ * - @ref X86_CONV_WIN64_FASTCALL
+ * - @ref X86_CONV_SYSV64_CDECL
  */
 
 /// @brief A calling convention. This also defines the ABI.
@@ -49,7 +53,13 @@ extern const x86conv X86_CONV_SYSV64_CDECL;
 
 /**
  * @brief Create an x86-to-IR generator
- * @param conv Calling convention. This defines 
+ * @param conv Calling convention. This includes which registers to preserve.
+ * @param irfunc The IR function to compile
  */ 
 void x86gen_create(x86gen* gen, const x86conv* conv, const struct cc_ir_func* irfunc);
 void x86gen_destroy(x86gen* gen);
+/**
+ * @brief Dump the IR straight to x86 code
+ * @param func An uninitialized struct to store the dumped data
+ */
+void x86gen_dump(x86gen* gen, x86func* func);

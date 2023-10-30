@@ -1,6 +1,7 @@
 #include "test.h"
 #include <cc/ir.h>
 #include <stdio.h>
+#include <cc/x86_gen.h>
 
 static void print_ir_local(const cc_ir_func* func, cc_ir_localid localid)
 {
@@ -72,28 +73,43 @@ static void print_ir_func(const cc_ir_func* func)
 
 int test_block(void)
 {
-    cc_ir_func func;
-    cc_ir_func_create(&func, CC_STR("my_func"));
+    cc_ir_func irfunc;
+    cc_ir_func_create(&irfunc, CC_STR("my_func"));
 
-    cc_ir_block* entry = func.entry_block;
-    cc_ir_block* end = cc_ir_func_insert(&func, entry, CC_STR("end"));
+    cc_ir_block* entry = irfunc.entry_block;
+    cc_ir_block* end = cc_ir_func_insert(&irfunc, entry, CC_STR("end"));
 
     // Create some local variables
-    cc_ir_localid my_int = cc_ir_func_int(&func, 4, CC_STR("my_int"));
-    cc_ir_localid negative_int = cc_ir_func_int(&func, 4, CC_STR("negative_int"));
+    cc_ir_localid my_int = cc_ir_func_int(&irfunc, 4, CC_STR("my_int"));
+    cc_ir_localid negative_int = cc_ir_func_int(&irfunc, 4, CC_STR("negative_int"));
 
     // Program the entry block
     cc_ir_block_ldc(entry, my_int, 9);                      // my_int = 9
     cc_ir_block_ldc(entry, negative_int, (uint32_t)-4);     // negative_int = -4
     cc_ir_block_add(entry, my_int, my_int, negative_int);   // my_int = my_int + negative_int
     cc_ir_block_add(entry, my_int, my_int, negative_int);   // my_int = my_int + negative_int
-    cc_ir_block_jnz(entry, end, my_int);                    // if (my_int != 0) goto ptr_end
+    cc_ir_block_jnz(entry, end, my_int);                    // if (my_int != 0) goto end
 
     // Program the end block
     cc_ir_block_retl(end, my_int);
 
-    print_ir_func(&func);
+    print_ir_func(&irfunc);
 
-    cc_ir_func_destroy(&func);
+    x86gen gen;
+    x86func func;
+    x86gen_create(&gen, &X86_CONV_SYSV64_CDECL, &irfunc);
+    
+    gen.mode = X86_MODE_PROTECTED;
+    x86gen_dump(&gen, &func);
+
+    printf("x86:");
+    for (size_t i = 0; i < func.size_code; ++i)
+        printf(" %.2X", func.code[i]);
+    printf("\n");
+
+    x86func_destroy(&func);
+    x86gen_destroy(&gen);
+
+    cc_ir_func_destroy(&irfunc);
     return 1;
 }

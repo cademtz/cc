@@ -31,6 +31,9 @@
     #define CC_STR(x) x
 #endif
 
+/// @brief Align `x` to the next multiple of `align`
+#define CC_ALIGN(x, align) ((x % align) ? x - (x % align) + align : x)
+
 typedef struct cc_arena
 {
     size_t size;
