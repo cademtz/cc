@@ -236,6 +236,10 @@ typedef struct x86func
     uint8_t mode;
 } x86func;
 
+/// @brief Compare two operands
+/// @return Zero if `a == b`. Negative when `a > b`. Positive when `a > b`
+int x86operand_cmp(x86operand a, x86operand b);
+
 /// @brief Create a new function with one block
 /// @param mode A value from @ref x86_mode
 void x86func_create(x86func* func, uint8_t mode);

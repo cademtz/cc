@@ -1,5 +1,30 @@
 #include <cc/x86_asm.h>
 
+int x86operand_cmp(x86operand a, x86operand b)
+{
+    int32_t diff = a.type - b.type;
+    if (diff)
+        return diff;
+    
+    switch (a.type)
+    {
+    case X86_OPERAND_REG: return a.reg - b.reg;
+    case X86_OPERAND_MEM:
+        diff = a.reg - b.reg;
+        if (diff)
+            return diff;
+        diff = a.index - b.index;
+        if (diff)
+            return diff;
+    case X86_OPERAND_OFFSET:
+    case X86_OPERAND_CONST:
+        return a.offset - b.offset;
+    default:
+        assert(0 && "Unknown x86 operand type");
+        return 0;
+    }
+}
+
 /// @brief Reserve `num_bytes` bytes in `func->code` for writing and advance `func->writepos`
 /// @return A temporary pointer to the reserved bytes
 static uint8_t* x86func_reserve(x86func* func, size_t num_bytes)

@@ -40,6 +40,29 @@ const x86conv X86_CONV_SYSV64_CDECL =
     false, // noreturn
 };
 
+/// @brief Reserve a new scratch register, which will be volatile
+static x86operand x86gen_scratch(x86gen* gen)
+{
+    for (uint8_t i = 0; i < X86_NUM_REGISTERS; ++i)
+    {
+        if (gen->mode != X86_MODE_LONG)
+        {
+            if (i >= X86_REG_R8)
+                break; // These registers are unavailable
+        }
+        if (i >= X86_REG_XMM0)
+            break; // These registers are too annoying to use (for now)
+        if (gen->conv->volatiles[i])
+            return x86_reg(i);
+    }
+    return x86_offset(UINT16_MAX);
+}
+
+/// @brief Un-reserve all scratch registers 
+static void x86gen_unscratch(x86gen* gen)
+{
+}
+
 void x86gen_create(x86gen* gen, const x86conv* conv, const cc_ir_func* irfunc)
 {
     memset(gen, 0, sizeof(*gen));
@@ -105,6 +128,7 @@ void x86gen_dump(x86gen* gen, x86func* func)
         for (size_t i = 0; i < block->num_ins; ++i)
         {
             const cc_ir_ins* ins = &block->ins[i];
+            const x86operand scratch = x86gen_scratch(gen);
             x86operand dst = x86_offset(INT16_MAX);
             x86operand src[2] = {x86_offset(INT16_MAX), x86_offset(INT16_MAX)};
             uint32_t dst_size = 0;
@@ -162,16 +186,38 @@ void x86gen_dump(x86gen* gen, x86func* func)
                 x86func_mov(func, 0, dst, x86_const(src_size[0]));
                 break;
             case CC_IR_OPCODE_ADD:
-                // FIXME: Choose a volatile register based on the calling convention, instead of hardcoding RAX.
-                // TODO: Avoid moving values if sources or destinations are the same
-                x86func_mov(func, 0, x86_reg(X86_REG_A), src[0]);
-                x86func_add(func, 0, x86_reg(X86_REG_A), src[1]);
-                x86func_mov(func, 0, dst, x86_reg(X86_REG_A));
+                if (!x86operand_cmp(dst, src[0]))
+                {
+                    x86func_mov(func, 0, scratch, src[1]);
+                    x86func_add(func, 0, dst, scratch);
+                }
+                else if (!x86operand_cmp(dst, src[1]))
+                {
+                    x86func_mov(func, 0, scratch, src[0]);
+                    x86func_add(func, 0, dst, scratch);
+                }
+                else
+                {
+                    x86func_mov(func, 0, scratch, src[0]);
+                    x86func_add(func, 0, scratch, src[1]);
+                    x86func_mov(func, 0, dst, scratch);
+                }
                 break;
             case CC_IR_OPCODE_SUB:
-                x86func_mov(func, 0, x86_reg(X86_REG_A), src[0]);
-                x86func_sub(func, 0, x86_reg(X86_REG_A), src[1]);
-                x86func_mov(func, 0, dst, x86_reg(X86_REG_A));
+                if (!x86operand_cmp(dst, src[0]))
+                {
+                    x86func_mov(func, 0, scratch, src[1]);
+                    x86func_sub(func, 0, src[0], scratch);
+                }
+                else
+                {
+                    x86func_mov(func, 0, scratch, src[0]);
+                    x86func_sub(func, 0, scratch, src[1]);
+                    x86func_mov(func, 0, dst, scratch);
+                }
+                break;
+            case CC_IR_OPCODE_JMP:
+                x86func_jmp(func, cc_hmap32_get_default(&map_blocks, ins->read.local[0], INT16_MAX));
                 break;
             case CC_IR_OPCODE_JNZ:
                 // src[0] is the block, and src[1] is the actual value to test
@@ -179,11 +225,15 @@ void x86gen_dump(x86gen* gen, x86func* func)
                 x86func_jnz(func, cc_hmap32_get_default(&map_blocks, ins->read.local[0], INT16_MAX));
                 break;
             case CC_IR_OPCODE_RETL:
+                // FIXME: Add mapping functions to x86conv instead of hardcoding on RAX.
+                // We could use `x86conv_return(conv, data_type, data_size)` to find where a returned value must go.
                 x86func_mov(func, 0, x86_reg(X86_REG_A), src[0]);
             case CC_IR_OPCODE_RET:
                 x86func_jmp(func, return_label);
                 break;
             }
+
+            x86gen_unscratch(gen);
         }
     }
 

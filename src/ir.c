@@ -9,6 +9,7 @@ const cc_ir_ins_format cc_ir_ins_formats[CC_IR_OPCODE__COUNT] =
     {"ldls",    {CC_IR_OPERAND_LOCAL,   CC_IR_OPERAND_LOCAL,  0}},
     {"add",     {CC_IR_OPERAND_LOCAL,   CC_IR_OPERAND_LOCAL,  CC_IR_OPERAND_LOCAL}},
     {"sub",     {CC_IR_OPERAND_LOCAL,   CC_IR_OPERAND_LOCAL,  CC_IR_OPERAND_LOCAL}},
+    {"jmp",     {0,                     CC_IR_OPERAND_LOCAL,  0}},
     {"jnz",     {0,                     CC_IR_OPERAND_LOCAL,  CC_IR_OPERAND_LOCAL}},
     {"ret",     {0,                     0,                    0}},
     {"retl",    {0,                     CC_IR_OPERAND_LOCAL,  0}},
@@ -149,6 +150,11 @@ void cc_ir_block_add(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, c
 }
 void cc_ir_block_sub(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs) {
     cc_ir_block_binary(block, CC_IR_OPCODE_SUB, dst, lhs, rhs);
+}
+void cc_ir_block_jmp(cc_ir_block* block, const cc_ir_block* dst)
+{
+    cc_ir_ins* ins = cc_ir_block_ins(block, CC_IR_OPCODE_JMP);
+    ins->read.local[0] = dst->localid;
 }
 void cc_ir_block_jnz(cc_ir_block* block, const cc_ir_block* dst, cc_ir_localid value)
 {
