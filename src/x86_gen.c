@@ -110,8 +110,8 @@ void x86gen_dump(x86gen* gen, x86func* func)
             else if (size >= 2)
                 align = 2;
             next_var = CC_ALIGN(next_var, align);
-            cc_hmap32_put(&map_vars, local->localid, -next_var);
             next_var += size;
+            cc_hmap32_put(&map_vars, local->localid, -next_var);
             break;
         }
         }
