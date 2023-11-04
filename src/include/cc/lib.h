@@ -159,7 +159,9 @@ typedef struct cc_hmap32entry
 /**
  * @brief A hashmap with 32-bit integer keys and values.
  * 
- * A maximum of `UINT32_MAX - 1` entries can be held (which would require over 48 gigabytes).
+ * A maximum of `UINT32_MAX - 1` entries can be held (which is 48 gigabytes).
+ * 
+ * Memory is reallocated only to grow the map, and never shrinks.
  */
 typedef struct cc_hmap32
 {
@@ -189,9 +191,12 @@ typedef struct cc_hmap32
 static inline void cc_hmap32_create(cc_hmap32* map) {
     memset(map, 0, sizeof(*map));
 }
+/// @brief Create a clone of `map`
+/// @param clone An uninitialized struct
+void cc_hmap32_clone(const cc_hmap32* map, cc_hmap32* clone);
 /// @brief Free memory and 0-initialize the map for later use
 void cc_hmap32_destroy(cc_hmap32* map);
-/// @brief Empty all values, potentially making room for new ones
+/// @brief Reset the map without shrinking the capacity
 void cc_hmap32_clear(cc_hmap32* map);
 /// @brief Get the number of entries in the map
 static inline size_t cc_hmap32_size(const cc_hmap32* map) { return map->num_entries; }
@@ -202,12 +207,12 @@ bool cc_hmap32_put(cc_hmap32* map, uint32_t key, uint32_t value);
 /// @param old_value Pointer to store the old value
 /// @return `true` if a value is replaced and `old_value` is set
 bool cc_hmap32_swap(cc_hmap32* map, uint32_t key, uint32_t value, uint32_t* old_value);
-/// @brief Put a new value
-/// @return `true` if a value is replaced
-bool cc_hmap32_put(cc_hmap32* map, uint32_t key, uint32_t value);
 /// @brief Delete a value by key
 /// @return `true` if a value is deleted
 bool cc_hmap32_delete(cc_hmap32* map, uint32_t key);
+/// @brief Remove a value by key and store it in `old_value`
+/// @return `true` if a value was removed
+bool cc_hmap32_remove(cc_hmap32* map, uint32_t key, uint32_t* old_value);
 /// @brief Get a value if `key` exists, otherwise return `default_value`
 uint32_t cc_hmap32_get_default(const cc_hmap32* map, uint32_t key, uint32_t default_value);
 /// @brief Get the index of the entry for `key`,
@@ -217,3 +222,29 @@ uint32_t cc_hmap32_get_index(const cc_hmap32* map, uint32_t key);
 /// @param out_value Pointer to store the value
 /// @return `true` if `key` exists and `out_value` is set
 bool cc_hmap32_get(const cc_hmap32* map, uint32_t key, uint32_t* out_value);
+
+typedef struct cc_vec
+{
+    void* elems;
+    size_t size;
+    size_t cap;
+    size_t size_elem;
+} cc_vec;
+
+/// @brief Create a vector
+/// @param size_elem The size of an element, in bytes
+void cc_vec_create(cc_vec* v, size_t size_elem);
+void cc_vec_destroy(cc_vec* v);
+/// @brief Reset the vector without shrinking the capacity
+static inline void cc_vec_clear(cc_vec* v) { v->size = 0; }
+static inline void* cc_vec_get(const cc_vec* v, size_t index)
+{
+    assert(index < v->size && "Vector index out of bounds");
+    return (uint8_t*)v->elems + index * v->size_elem;
+}
+void cc_vec_insert(cc_vec* v, const void* element, size_t index);
+static inline void cc_vec_push(cc_vec* v, const void* element) {
+    cc_vec_insert(v, element, v->size);
+}
+void cc_vec_pop(cc_vec* v);
+void cc_vec_delete(cc_vec* v, size_t index);

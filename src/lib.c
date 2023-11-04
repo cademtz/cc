@@ -231,7 +231,11 @@ static cc_hmap32entry* cc_hmap32_append(cc_hmap32* map, uint32_t key, uint32_t v
     return entry;
 }
 
-/// @brief Resize the map's bucket to `map->cap_entries * CC_HMAP_MAXBUCKET`
+/**
+ * @brief Resize the map's bucket to `map->cap_entries * CC_HMAP_MAXBUCKET`.
+ * 
+ * This will re-add all entries to the bucket and update their links.
+ */
 static void cc_hmap32_grow(cc_hmap32* map)
 {
     map->cap_bucket = (size_t)(map->cap_entries * CC_HMAP_MAXBUCKET) + 1;
@@ -257,6 +261,20 @@ static void cc_hmap32_grow(cc_hmap32* map)
         *index = i;
         *flags |= CC_HMAP_FLAG_EXISTS;
     }
+}
+
+void cc_hmap32_clone(const cc_hmap32* map, cc_hmap32* clone)
+{
+    memset(clone, 0, sizeof(*clone));
+    if (!map->num_entries)
+        return;
+    
+    clone->num_entries = map->num_entries;
+    clone->cap_entries = clone->num_entries;
+    size_t size_entries = clone->num_entries * sizeof(clone->entries[0]);
+    clone->entries = (cc_hmap32entry*)malloc(size_entries);
+    memcpy(clone->entries, map->entries, size_entries);
+    cc_hmap32_grow(clone);
 }
 
 void cc_hmap32_destroy(cc_hmap32* map)
@@ -316,6 +334,15 @@ bool cc_hmap32_put(cc_hmap32* map, uint32_t key, uint32_t value)
 
 bool cc_hmap32_delete(cc_hmap32* map, uint32_t key)
 {
+    uint32_t old_value;
+    return cc_hmap32_remove(map, key, &old_value);
+}
+
+bool cc_hmap32_remove(cc_hmap32* map, uint32_t key, uint32_t* old_value)
+{
+    if (!map->num_entries)
+        return false;
+    
     uint32_t hash = cc_hmap32_hash(map, key);
     uint32_t index = cc_hmap32_get_index(map, key);
     uint32_t parent_index = cc_hmap32_indices(map)[hash];
@@ -349,6 +376,7 @@ bool cc_hmap32_delete(cc_hmap32* map, uint32_t key)
 
     // Finally, remove our entry from the vector
     --map->num_entries;
+    *old_value = entry->value;
     if (index == map->num_entries)
         return true;
     
@@ -381,6 +409,9 @@ uint32_t cc_hmap32_get_default(const cc_hmap32* map, uint32_t key, uint32_t defa
 
 uint32_t cc_hmap32_get_index(const cc_hmap32* map, uint32_t key)
 {
+    if (!map->num_entries)
+        return UINT32_MAX;
+    
     uint32_t hash = cc_hmap32_hash(map, key);
     uint8_t flags = cc_hmap32_flags(map)[hash];
     uint32_t index = cc_hmap32_indices(map)[hash];
@@ -408,3 +439,51 @@ bool cc_hmap32_get(const cc_hmap32* map, uint32_t key, uint32_t* out_value)
     *out_value = map->entries[index].value;
     return true;
 }
+
+void cc_vec_create(cc_vec* v, size_t size_elem)
+{
+    memset(v, 0, sizeof(*v));
+    v->size_elem = size_elem;
+}
+void cc_vec_destroy(cc_vec* v) {
+    free(v->elems);
+}
+
+void cc_vec_insert(cc_vec* v, const void* element, size_t index)
+{
+    assert(index <= v->size && "Vector index out of bounds");
+
+    size_t new_size = v->size + 1;
+    if (new_size > v->cap)
+    {
+        v->cap = new_size;
+        v->elems = realloc(v->elems, v->cap * v->size_elem);
+    }
+
+    if (index < v->size)
+    {
+        uint8_t* low = (uint8_t*)v->elems + index * v->size_elem;
+        memmove(low + v->size_elem, low, (v->size - index) * v->size_elem);
+    }
+    v->size = new_size;
+    memcpy((uint8_t*)v->elems + index * v->size_elem, element, v->size_elem);
+}
+
+void cc_vec_pop(cc_vec* v)
+{
+    assert(v->size != 0 && "Pop on empty array");
+    --v->size;
+}
+
+void cc_vec_delete(cc_vec* v, size_t index)
+{
+    assert(index < v->size && "Vector index out of bounds");
+
+    --v->size;
+    if (index < v->size)
+    {
+        uint8_t* low = (uint8_t*)v->elems + index * v->size_elem;
+        memmove(low, low + v->size_elem, (v->size - index) * v->size_elem);
+    }
+}
+

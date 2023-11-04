@@ -6,7 +6,8 @@ add_executable(tests
     test_stmt.c
     test_function.c
     test_block.c
-    test_x86.c
+    test_x86asm.c
+    test_x86gen.c
     test_hmap.c
 )
 target_include_directories(tests PRIVATE ${CC_INCLUDE_DIR})

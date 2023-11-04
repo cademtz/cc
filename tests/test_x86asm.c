@@ -30,7 +30,7 @@ static int equal__code(const x86func* func, size_t offset, const char* expected,
     return result;
 }
 
-int test_x86(void)
+int test_x86asm(void)
 {
     x86func func;
 

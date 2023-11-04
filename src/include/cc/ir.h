@@ -37,6 +37,9 @@ enum cc_ir_opcode
     /// @brief Load the `target` local's size in `dst`.
     /// Format: `ldls local dst, local target`
     CC_IR_OPCODE_LDLS,
+    /// @brief Assign `dst` the value of `src`
+    /// Format: `mov local dst, local src`
+    CC_IR_OPCODE_MOV,
     
     /// @brief Store `lhs + rhs` in `dst`.
     /// Format: add local dst, local lhs, local rhs
@@ -116,8 +119,13 @@ typedef struct cc_ir_local
     cc_ir_localid localid;
 } cc_ir_local;
 
-/// @brief An intermediate instruction.
-/// Composed of an opcode, 1 write-only operand, and 2 read-only operands.
+/** @brief An intermediate instruction.
+ * 
+ * Composed of an opcode, 1 write-only operand, and 2 read-only operands.
+ * 
+ * A read-only operand may contain an address that is written to,
+ * but that operand remains unchanged.
+ */
 typedef struct cc_ir_ins
 {
     /// @brief A value from @ref cc_ir_opcode
@@ -140,7 +148,7 @@ typedef struct cc_ir_ins
 /**
  * @brief A block of instructions ( @ref cc_ir_ins ), part of a linked list of blocks.
  * 
- * Only the last instruction, in a block can change control flow.
+ * Only the last instruction in a block can change the control flow.
  * Otherwise, execution falls-through to @ref cc_ir_block.next_block.
  */
 typedef struct cc_ir_block
@@ -176,6 +184,10 @@ const extern cc_ir_ins_format cc_ir_ins_formats[CC_IR_OPCODE__COUNT];
 
 /// @brief Create a new IR function with a new empty entry block
 void cc_ir_func_create(cc_ir_func* func, const char* name);
+/// @brief Create a clone of `func`
+/// @param func The original function
+/// @param clone An uninitialized struct to store the cloned function
+void cc_ir_func_clone(const cc_ir_func* func, cc_ir_func* clone);
 /// @brief Free the IR function, its blocks, and its locals
 void cc_ir_func_destroy(cc_ir_func* func);
 /// @brief Get the function's localid to itself
@@ -206,7 +218,20 @@ cc_ir_localid cc_ir_func_int(cc_ir_func* func, uint32_t size_bytes, const char* 
  * @return The new local id
  */
 cc_ir_localid cc_ir_func_ptr(cc_ir_func* func, const char* name);
+/**
+ * @brief Create a new local with the same type as the original
+ * @param localid The local to clone
+ * @param name (optional) Variable name
+ * @return The new local id
+ */
+cc_ir_localid cc_ir_func_clonelocal(cc_ir_func* func, cc_ir_localid localid, const char* name);
 
+/**
+ * @brief Insert a new instruction anywhere in the block's code
+ * @param index An index, where `index <= block->num_ins`
+ * @param ins The instruction
+ */
+void cc_ir_block_insert(cc_ir_block* block, size_t index, cc_ir_ins ins);
 /// @brief Load an integer constant: `dst = value`
 void cc_ir_block_ldc(cc_ir_block* block, cc_ir_localid dst, uint32_t value);
 /// @brief Load a local's address: `dst = & src`
@@ -227,3 +252,6 @@ void cc_ir_block_ret(cc_ir_block* block);
 void cc_ir_block_retl(cc_ir_block* block, cc_ir_localid value);
 /// @brief Hint at the usage of two locals
 void cc_ir_block_phi(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs);
+
+/// @brief Copy a local's value to another: `dst = src`
+cc_ir_ins cc_ir_ins_mov(cc_ir_localid dst, cc_ir_localid src);
