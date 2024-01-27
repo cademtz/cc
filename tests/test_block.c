@@ -12,7 +12,7 @@ static void print_ir_local(const cc_ir_func* func, cc_ir_localid localid)
     case CC_IR_LOCALTYPEID_BLOCK: printf("block "); break;
     case CC_IR_LOCALTYPEID_FUNC: printf("func "); break;
     case CC_IR_LOCALTYPEID_INT:
-        printf("i%d ", local->var_size * 8);
+        printf("i%d ", local->data_size * 8);
         break;
     case CC_IR_LOCALTYPEID_PTR: printf("ptr "); break;
     default:
@@ -46,24 +46,12 @@ static void print_ir_func(const cc_ir_func* func)
                 if (!fmt->operand[i])
                     continue;
 
-                if (i == 0) // Write operand
-                    print_ir_local(func, ins->write);
-                else
+                switch (fmt->operand[i])
                 {
-                    switch (fmt->operand[i])
-                    {
-                    case CC_IR_OPERAND_U32: printf(" %u,", ins->read.u32); break;
-                    case CC_IR_OPERAND_LOCAL:
-                    {
-                        int read_index = i - 1;
-                        if (read_index >= 0 && read_index <= 1)
-                            print_ir_local(func, ins->read.local[read_index]);
-                        else
-                            printf(" <invalid read index>,");
-                        break;
-                    }
-                    default: printf(" <unknown operand>,"); break;
-                    }
+                case CC_IR_OPERAND_U32: printf(" u32:%u,", ins->operand.u32); break;
+                case CC_IR_OPERAND_LOCAL: print_ir_local(func, ins->operand.local); break;
+                case CC_IR_OPERAND_DATASIZE: printf(" size:%u,", ins->data_size); break;
+                default: printf(" <unknown operand>,"); break;
                 }
             }
             printf("\n");
@@ -80,45 +68,17 @@ int test_block(void)
     cc_ir_block* loop = cc_ir_func_insert(&irfunc, entry, CC_STR("loop"));
     cc_ir_block* end = cc_ir_func_insert(&irfunc, loop, CC_STR("end"));
 
-    // Create some local variables
-    cc_ir_localid positive = cc_ir_func_int(&irfunc, 4, CC_STR("positive"));
-    cc_ir_localid negative = cc_ir_func_int(&irfunc, 4, CC_STR("negative"));
-    cc_ir_localid result = cc_ir_func_int(&irfunc, 4, CC_STR("result"));
+    const int INT_SIZE = 4;
 
-    // Program the entry block
-    cc_ir_block_ldc(entry, positive, 9);                // positive = 9
-    cc_ir_block_ldc(entry, negative, (uint32_t)-4);     // negative = -4
-    cc_ir_block_add(entry, result, positive, negative); // result = positive + negative
-    
-    cc_ir_block_add(loop, result, result, positive);    // result += positive
-    cc_ir_block_add(loop, result, result, negative);    // result += negative
-    cc_ir_block_jnz(loop, loop, result);                // if (result != 0) goto end
+    cc_ir_block_iconst(entry, INT_SIZE, 9);
+    cc_ir_block_iconst(entry, INT_SIZE, 10);
+    cc_ir_block_add(entry, INT_SIZE);
 
-    // Program the end block
-    cc_ir_block_retl(end, result);                      // return result
+    cc_ir_block_ret(end);
 
-    x86gen gen;
-    x86gen_create(&gen, &X86_CONV_SYSV64_CDECL, &irfunc);
-    gen.mode = X86_MODE_PROTECTED;
-
-    // Simplify the IR for x86 and see what it looks like
-    cc_ir_func simplified;
-    x86gen_simplify(&gen, &irfunc, &simplified);
     printf("Original IR:\n");
     print_ir_func(&irfunc);
-    printf("x86-like IR:\n");
-    print_ir_func(&simplified);
-    cc_ir_func_destroy(&simplified);
-    
-    x86func compiled;
-    x86gen_dump(&gen, &compiled);
-    printf("x86:");
-    for (size_t i = 0; i < compiled.size_code; ++i)
-        printf(" %.2X", compiled.code[i]);
-    printf("\n");
-    x86func_destroy(&compiled);
-    
-    x86gen_destroy(&gen);
+
     cc_ir_func_destroy(&irfunc);
     return 1;
 }

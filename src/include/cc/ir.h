@@ -9,10 +9,12 @@
  * A block may only change control flow using its last instruction.
  * This means jumps, interrupts, and returns may not appear in the middle of a block.
  * 
- * IR functions have locals ( @ref cc_ir_local ). Each local has a size and address. A local can be:
- * - A code block
+ * IR functions have locals ( @ref cc_ir_local ). Each local has a size and address.
+ * Examples of things that are locals:
  * - An integer (of any size)
  * - A large constant
+ * - One of the arguments
+ * - One of the code blocks
  * - The function itself
  * 
  * All locals are referenced by id ( @ref cc_ir_localid ).
@@ -21,49 +23,62 @@
  * Integer overflow must always wrap.
  */
 
-#define CC_IR_MAX_OPERANDS 3
+#define CC_IR_MAX_OPERANDS 2
 typedef uint16_t cc_ir_localid;
+typedef uint32_t cc_ir_datasize;
 
-/// @brief Enum of every opcode.
-/// If you modify this enum, then update @ref cc_ir_ins_formats to match.
+/// @brief Enum of every opcode
 enum cc_ir_opcode
 {
-    /// @brief Load constant `value` in `dst` and clear any remaining bits.
-    /// Format: `ldc local dst, u32 value`
-    CC_IR_OPCODE_LDC,
-    /// @brief Load the `target` local's address in `dst`.
-    /// Format: `ldla local dst, local target`
-    CC_IR_OPCODE_LDLA,
-    /// @brief Load the `target` local's size in `dst`.
-    /// Format: `ldls local dst, local target`
-    CC_IR_OPCODE_LDLS,
-    /// @brief Assign `dst` the value of `src`
-    /// Format: `mov local dst, local src`
-    CC_IR_OPCODE_MOV,
+    // === Loading and storing locals ===
+
+    /// @brief Push a local's address
+    CC_IR_OPCODE_LA,
+    /// @brief Push a local's size
+    CC_IR_OPCODE_LS,
+    /// @brief Push a local's value
+    CC_IR_OPCODE_LLD,
+    /// @brief Store value in local
+    CC_IR_OPCODE_LSTO,
+
+    // === Loading and storing ===
+
+    /// @brief Push a sign-extended 32-bit integer
+    /// @details Pseudocode: `push(i)`
+    CC_IR_OPCODE_ICONST,
+    /// @brief Push a zero-extended 32-bit integer
+    /// @details Pseudocode: `push(i)`
+    CC_IR_OPCODE_UCONST,
+    /// @brief Load value at address
+    /// @details Pseudocode: `push(*pop())`
+    CC_IR_OPCODE_LD,
+    /// @brief Store value at address
+    /// @details Pseudocode: `*pop() = pop()`
+    CC_IR_OPCODE_STO,
     
-    /// @brief Store `lhs + rhs` in `dst`.
-    /// Format: add local dst, local lhs, local rhs
+    // === Arithmetic ===
+
+    /// @brief Add integers
+    /// @details Pseudocode: `push(pop() + pop())`
     CC_IR_OPCODE_ADD,
-    /// @brief Store `lhs - rhs` in `dst`.
-    /// Format: `add local dst, local lhs, local rhs`
+    /// @brief Subtract integers
+    /// @details Pseudocode: `push(pop() - pop())`
     CC_IR_OPCODE_SUB,
 
-    /// @brief Jump to `block`.
-    /// Format: `jmp local block`
-    CC_IR_OPCODE_JMP,
-    /// @brief Jump to `block` if `value` is not zero.
-    /// Format: `jnz local block, local value`
-    CC_IR_OPCODE_JNZ,
-    /// @brief Return.
-    /// Format: `ret`
-    CC_IR_OPCODE_RET,
-    /// @brief Return a local value.
-    /// Format: `ret local value`
-    CC_IR_OPCODE_RETL,
+    // === Control flow ===
 
-    /// @brief A hint that `dst` may be either `lhs` or `rhs`.
-    /// Format: `phi local dst, local lhs, local rhs`
-    CC_IR_OPCODE_PHI,
+    /// @brief Call address
+    /// @details: Pseudocode: `call pop()`
+    CC_IR_OPCODE_CALL,
+    /// @brief Jump to address
+    /// @details Pseudocode: `goto pop()`
+    CC_IR_OPCODE_JMP,
+    /// @brief Jump to address if value is not zero
+    /// @details Pseudocode: `if (pop() != 0) goto pop()`
+    CC_IR_OPCODE_JNZ,
+    /// @brief Return
+    /// @details Pseudocode: `return`
+    CC_IR_OPCODE_RET,
 
     /// @brief The number of valid opcodes.
     /// Do not create any opcodes greater-than or equal-to this value.
@@ -77,6 +92,8 @@ enum cc_ir_operand
     CC_IR_OPERAND_NONE,
     /// @brief Local variable
     CC_IR_OPERAND_LOCAL,
+    /// @brief Data size
+    CC_IR_OPERAND_DATASIZE,
     /// @brief A raw 32-bit constant
     CC_IR_OPERAND_U32,
 };
@@ -107,42 +124,34 @@ typedef struct cc_ir_local
      */
     char* name;
     /** 
-     * @brief Variable size in bytes. Currently, only integers use this.
+     * @brief Size in bytes. Currently, only integers use this.
      * 
      * A pointer size is only known while compiling the IR.
      * A function or block's size is only known after partial or full compilation of the IR. 
      */
-    uint32_t var_size;
+    cc_ir_datasize data_size;
     /// @brief A value from @ref cc_ir_localtypeid
     uint16_t localtypeid;
     /// @brief This local's ID
     cc_ir_localid localid;
 } cc_ir_local;
 
-/** @brief An intermediate instruction.
- * 
- * Composed of an opcode, 1 write-only operand, and 2 read-only operands.
- * 
- * A read-only operand may contain an address that is written to,
- * but that operand remains unchanged.
+/**
+ * @brief An intermediate instruction.
  */
 typedef struct cc_ir_ins
 {
     /// @brief A value from @ref cc_ir_opcode
     uint8_t opcode;
-    /// @brief Currently used as padding. Should be zero.
-    uint8_t reserved;
-    /// @brief Write-only operand.
-    /// This local receives the result (if any) of the operation.
-    cc_ir_localid write;
-    /// @brief Read-only operands
+    /// @brief Operation size (in bytes)
+    cc_ir_datasize data_size;
     union
     {
-        /// @brief Additional locals to read from
-        cc_ir_localid local[2];
-        /// @brief A raw 32-bit constant
+        /// @brief local
+        cc_ir_localid local;
+        /// @brief 32-bit constant
         uint32_t u32;
-    } read;
+    } operand;
 } cc_ir_ins;
 
 /**
@@ -190,13 +199,14 @@ void cc_ir_func_create(cc_ir_func* func, const char* name);
 void cc_ir_func_clone(const cc_ir_func* func, cc_ir_func* clone);
 /// @brief Free the IR function, its blocks, and its locals
 void cc_ir_func_destroy(cc_ir_func* func);
-/// @brief Get the function's localid to itself
+/// @brief Get the function's localid
 static cc_ir_localid cc_ir_func_getlocalself(const cc_ir_func* func) {
     return 0;
 }
 /// @brief Get information about a function's local
 cc_ir_local* cc_ir_func_getlocal(const cc_ir_func* func, cc_ir_localid localid);
 /// @brief Get a block in the function
+/// @return nullptr if the local is not a block.
 cc_ir_block* cc_ir_func_getblock(const cc_ir_func* func, cc_ir_localid localid);
 /**
  * @brief Create a new block following a previous one
@@ -227,31 +237,27 @@ cc_ir_localid cc_ir_func_ptr(cc_ir_func* func, const char* name);
 cc_ir_localid cc_ir_func_clonelocal(cc_ir_func* func, cc_ir_localid localid, const char* name);
 
 /**
- * @brief Insert a new instruction anywhere in the block's code
+ * @brief Insert or append a new instruction anywhere in the block
  * @param index An index, where `index <= block->num_ins`
  * @param ins The instruction
  */
-void cc_ir_block_insert(cc_ir_block* block, size_t index, cc_ir_ins ins);
-/// @brief Load an integer constant: `dst = value`
-void cc_ir_block_ldc(cc_ir_block* block, cc_ir_localid dst, uint32_t value);
-/// @brief Load a local's address: `dst = & src`
-void cc_ir_block_ldla(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid src);
-/// @brief Load a local's size: `dst = sizeof(src)`
-void cc_ir_block_ldls(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid src);
-/// @brief Add two locals: `dst = lhs + rhs`
-void cc_ir_block_add(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs);
-/// @brief Subtract two locals: `dst = lhs - rhs`
-void cc_ir_block_sub(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs);
-/// @brief Jump: `goto dst`
-void cc_ir_block_jmp(cc_ir_block* block, const cc_ir_block* dst);
-/// @brief Jump if not zero: `if (value != 0) goto dst`
-void cc_ir_block_jnz(cc_ir_block* block, const cc_ir_block* dst, cc_ir_localid value);
-/// @brief Return
-void cc_ir_block_ret(cc_ir_block* block);
-/// @brief Return a local value
-void cc_ir_block_retl(cc_ir_block* block, cc_ir_localid value);
-/// @brief Hint at the usage of two locals
-void cc_ir_block_phi(cc_ir_block* block, cc_ir_localid dst, cc_ir_localid lhs, cc_ir_localid rhs);
+void cc_ir_block_insert(cc_ir_block* block, size_t index, const cc_ir_ins* ins);
+/// @brief Append an instruction to the block
+static inline void cc_ir_block_append(cc_ir_block* block, const cc_ir_ins* ins) {
+    cc_ir_block_insert(block, block->num_ins, ins);
+}
 
-/// @brief Copy a local's value to another: `dst = src`
-cc_ir_ins cc_ir_ins_mov(cc_ir_localid dst, cc_ir_localid src);
+void cc_ir_block_la(cc_ir_block* block, cc_ir_localid localid);
+void cc_ir_block_ls(cc_ir_block* block, cc_ir_localid localid);
+void cc_ir_block_lld(cc_ir_block* block, cc_ir_localid localid);
+void cc_ir_block_lsto(cc_ir_block* block, cc_ir_localid localid);
+void cc_ir_block_iconst(cc_ir_block* block, cc_ir_datasize data_size, int32_t value);
+void cc_ir_block_uconst(cc_ir_block* block, cc_ir_datasize data_size, uint32_t value);
+void cc_ir_block_ld(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_sto(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_add(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_call(cc_ir_block* block);
+void cc_ir_block_jmp(cc_ir_block* block);
+void cc_ir_block_jnz(cc_ir_block* block);
+void cc_ir_block_ret(cc_ir_block* block);
