@@ -20,6 +20,8 @@ void test__assert(const char* comment, int result, const char* file, int line);
  */
 int helper_create_parser(cc_parser* out_parser, const char* source_code);
 
+struct cc_ir_func;
+
 void print_ast_expr(const cc_ast_expr* expr);
 void print_ast_body(const cc_ast_body* body);
 void print_ast_decl(const cc_ast_decl* decl);
@@ -33,3 +35,4 @@ int print_ast_ternary(const cc_ast_expr* expr);
 void print_ast_expr(const cc_ast_expr* expr);
 void print_ast_stmt(const cc_ast_stmt* stmt);
 void print_ast_body(const cc_ast_body* body);
+void print_ir_func(const struct cc_ir_func* func);
