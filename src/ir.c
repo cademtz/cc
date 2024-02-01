@@ -19,7 +19,7 @@ const cc_ir_ins_format cc_ir_ins_formats[CC_IR_OPCODE__COUNT] =
 
     {"call",    {0}},
     {"jmp",     {0}},
-    {"jnz",     {0}},
+    {"jnz",     {CC_IR_OPERAND_DATASIZE}},
     {"ret",     {0}},
 };
 
@@ -216,5 +216,5 @@ void cc_ir_block_add(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_bloc
 void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_SUB, data_size); }
 void cc_ir_block_call(cc_ir_block* block) { cc__ir_block_append_noop(block, CC_IR_OPCODE_CALL); }
 void cc_ir_block_jmp(cc_ir_block* block) { cc__ir_block_append_noop(block, CC_IR_OPCODE_JMP); }
-void cc_ir_block_jnz(cc_ir_block* block) { cc__ir_block_append_noop(block, CC_IR_OPCODE_JNZ); }
+void cc_ir_block_jnz(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_JNZ, data_size); }
 void cc_ir_block_ret(cc_ir_block* block) { cc__ir_block_append_noop(block, CC_IR_OPCODE_RET); }

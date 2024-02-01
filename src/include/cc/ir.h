@@ -259,5 +259,5 @@ void cc_ir_block_add(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_call(cc_ir_block* block);
 void cc_ir_block_jmp(cc_ir_block* block);
-void cc_ir_block_jnz(cc_ir_block* block);
+void cc_ir_block_jnz(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_ret(cc_ir_block* block);
