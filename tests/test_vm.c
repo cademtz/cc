@@ -14,12 +14,11 @@ int test_vm(void)
 
     const int INT_SIZE = 4;
 
-    cc_ir_block_iconst(entry, INT_SIZE, 10);
     cc_ir_block_iconst(entry, INT_SIZE, 9);
-    cc_ir_block_sub(entry, INT_SIZE);
 
     cc_ir_block_iconst(loop, INT_SIZE, -1);
     cc_ir_block_add(loop, INT_SIZE);
+    cc_ir_block_dup(loop, INT_SIZE);
     cc_ir_block_jnz(loop, INT_SIZE, loop);
 
     cc_ir_block_ret(end);
