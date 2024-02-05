@@ -20,8 +20,7 @@ int test_vm(void)
 
     cc_ir_block_iconst(loop, INT_SIZE, -1);
     cc_ir_block_add(loop, INT_SIZE);
-    cc_ir_block_la(loop, loop->localid);
-    cc_ir_block_jnz(loop, INT_SIZE);
+    cc_ir_block_jnz(loop, INT_SIZE, loop);
 
     cc_ir_block_ret(end);
 

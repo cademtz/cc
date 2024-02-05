@@ -73,8 +73,8 @@ enum cc_ir_opcode
     /// @brief Jump to address
     /// @details Pseudocode: `goto pop()`
     CC_IR_OPCODE_JMP,
-    /// @brief Jump to address if value is not zero
-    /// @details Pseudocode: `if (pop() != 0) goto pop()`
+    /// @brief Jump to block if value is not zero
+    /// @details Pseudocode: `if (pop() != 0) goto block`
     CC_IR_OPCODE_JNZ,
     /// @brief Return
     /// @details Pseudocode: `return`
@@ -259,5 +259,5 @@ void cc_ir_block_add(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_call(cc_ir_block* block);
 void cc_ir_block_jmp(cc_ir_block* block);
-void cc_ir_block_jnz(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_jnz(cc_ir_block* block, cc_ir_datasize data_size, const cc_ir_block* dst);
 void cc_ir_block_ret(cc_ir_block* block);

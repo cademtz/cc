@@ -148,12 +148,13 @@ void cc_vm_step(cc_vm* vm)
     case CC_IR_OPCODE_JMP:
     case CC_IR_OPCODE_JNZ:
     {
-        // Pop jump location from stack.
-        // In this case, the VM can only jump to blocks, so the location points to a block struct
-        void** ptr_on_stack = (void**)cc__vm_pop(vm, sizeof(void*));
-        if (!ptr_on_stack)
+        // Get the destination
+        const cc_ir_block* dst_block = cc_ir_func_getblock(vm->ip_func, ins->operand.local);
+        if (dst_block == NULL)
+        {
+            vm->vmexception = CC_VMEXCEPTION_INVALID_LOCALID;
             return;
-        const cc_ir_block* dst_block = (const cc_ir_block*)*ptr_on_stack;
+        }
 
         // Check condition
         bool condition = true;

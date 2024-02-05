@@ -19,7 +19,7 @@ typedef enum cc_vmexception
 /**
  * @brief The virtual machine state.
  * 
- * 
+ * The instruction pointer is a combination of the `ip`, `ip_block`, and `ip_func` members.
  */
 typedef struct cc_vm
 {
