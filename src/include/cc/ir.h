@@ -55,6 +55,8 @@ enum cc_ir_opcode
     /// @brief Store value at address
     /// @details Pseudocode: `*pop() = pop()`
     CC_IR_OPCODE_STO,
+    /// @brief Duplicate the last n bytes on the stack
+    CC_IR_OPCODE_DUP,
     
     // === Arithmetic ===
 
@@ -255,6 +257,7 @@ void cc_ir_block_iconst(cc_ir_block* block, cc_ir_datasize data_size, int32_t va
 void cc_ir_block_uconst(cc_ir_block* block, cc_ir_datasize data_size, uint32_t value);
 void cc_ir_block_ld(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_sto(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_dup(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_add(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_call(cc_ir_block* block);

@@ -13,6 +13,7 @@ const cc_ir_ins_format cc_ir_ins_formats[CC_IR_OPCODE__COUNT] =
     {"uconst",  {CC_IR_OPERAND_DATASIZE, CC_IR_OPERAND_U32}},
     {"ld",      {CC_IR_OPERAND_DATASIZE}},
     {"sto",     {CC_IR_OPERAND_DATASIZE}},
+    {"dup",     {CC_IR_OPERAND_DATASIZE}},
 
     {"add",     {CC_IR_OPERAND_DATASIZE}},
     {"sub",     {CC_IR_OPERAND_DATASIZE}},
@@ -212,6 +213,7 @@ void cc_ir_block_uconst(cc_ir_block* block, cc_ir_datasize data_size, uint32_t v
 }
 void cc_ir_block_ld(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_LD, data_size); }
 void cc_ir_block_sto(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_STO, data_size); }
+void cc_ir_block_dup(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_DUP, data_size); }
 void cc_ir_block_add(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_ADD, data_size); }
 void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_SUB, data_size); }
 void cc_ir_block_call(cc_ir_block* block) { cc__ir_block_append_noop(block, CC_IR_OPCODE_CALL); }

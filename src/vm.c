@@ -124,6 +124,20 @@ void cc_vm_step(cc_vm* vm)
         memcpy(dst_ptr, src_ptr, ins->data_size);
         break;
     }
+    case CC_IR_OPCODE_DUP:
+    {
+        const void* src = cc__vm_pop(vm, ins->data_size);
+        if (!src)
+            return;
+            
+        cc__vm_push(vm, ins->data_size);
+        void* dst = cc__vm_push(vm, ins->data_size);
+        if (!dst)
+            return;
+
+        memcpy(dst, src, ins->data_size);
+        break;
+    }
 
     case CC_IR_OPCODE_ADD:
     case CC_IR_OPCODE_SUB:
