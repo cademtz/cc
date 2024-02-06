@@ -65,6 +65,29 @@ int test_bigint(void)
 
         test_assert("lhs must contain the same data as the answer", !memcmp(lhs, answer, sizeof(lhs)));
     }
+    // Test basic bit operations
+    {
+        uint8_t rand0[16], rand1[16], answer[16];
+        uint8_t lhs[16], rhs[16];
+        cc_bigint_atoi(sizeof(rand0), rand0, 16, "9653299cca49c5347e81f89e09027d72", -1);
+        cc_bigint_atoi(sizeof(rand1), rand1, 16, "c6467992eff88e4adc4cb4da60e583b8", -1);
+        memcpy(rhs, rand1, sizeof(rhs));
+
+        memcpy(lhs, rand0, sizeof(lhs));
+        cc_bigint_and(sizeof(lhs), lhs, rhs);
+        cc_bigint_atoi(sizeof(answer), answer, 16, "86422990ca4884005c00b09a00000130", -1);
+        test_assert("lhs must contain the same data as the answer", !memcmp(lhs, answer, sizeof(lhs)));
+        
+        memcpy(lhs, rand0, sizeof(lhs));
+        cc_bigint_or(sizeof(lhs), lhs, rhs);
+        cc_bigint_atoi(sizeof(answer), answer, 16, "d657799eeff9cf7efecdfcde69e7fffa", -1);
+        test_assert("lhs must contain the same data as the answer", !memcmp(lhs, answer, sizeof(lhs)));
+        
+        memcpy(lhs, rand0, sizeof(lhs));
+        cc_bigint_xor(sizeof(lhs), lhs, rhs);
+        cc_bigint_atoi(sizeof(answer), answer, 16, "5015500e25b14b7ea2cd4c4469e7feca", -1);
+        test_assert("lhs must contain the same data as the answer", !memcmp(lhs, answer, sizeof(lhs)));
+    }
 
     return 1;
 }

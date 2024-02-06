@@ -255,6 +255,24 @@ void cc_bigint_not(size_t size, void* dst)
         *((uint8_t*)dst + i) = ~*((uint8_t*)dst + i);
 }
 
+void cc_bigint_and(size_t size, void* dst, const void* src)
+{
+    for (size_t i = 0; i < size; ++i)
+        *((uint8_t*)dst + i) &= *((uint8_t*)src + i);
+}
+
+void cc_bigint_or(size_t size, void* dst, const void* src)
+{
+    for (size_t i = 0; i < size; ++i)
+        *((uint8_t*)dst + i) |= *((uint8_t*)src + i);
+}
+
+void cc_bigint_xor(size_t size, void* dst, const void* src)
+{
+    for (size_t i = 0; i < size; ++i)
+        *((uint8_t*)dst + i) ^= *((uint8_t*)src + i);
+}
+
 int cc_bigint_sign(size_t size, const void* lhs) {
     return cc_bigint_byte(size, lhs, size - 1) >> 7;
 }
