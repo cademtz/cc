@@ -29,6 +29,11 @@ size_t cc_bigint_atoi(size_t size, void* dst, int radix, const char* str, size_t
 uint8_t cc_bigint_byte(size_t size, const void* src, size_t byte_index);
 const uint8_t* cc_bigint_byteptr_const(size_t size, const void* src, size_t byte_index);
 uint8_t* cc_bigint_byteptr(size_t size, void* src, size_t byte_index);
+/// @brief Get the pointer to a span of bytes
+/// @param index An index starting from the least-significant byte
+/// @param len Number of bytes included in the span
+const uint8_t* cc_bigint_spanptr_const(size_t size, const void* src, size_t index, size_t len);
+uint8_t* cc_bigint_spanptr(size_t size, void* src, size_t index, size_t len);
 
 void cc_bigint_add(size_t size, void* dst, const void* src);
 void cc__bigint_add_32(size_t size, void* dst, uint32_t src, int sign_bit);
@@ -50,6 +55,10 @@ void cc_bigint_and(size_t size, void* dst, const void* src);
 void cc_bigint_or(size_t size, void* dst, const void* src);
 /// @brief Bitwise exclusive-or
 void cc_bigint_xor(size_t size, void* dst, const void* src);
+/// @brief Bitwise left-shift
+void cc_bigint_lsh(size_t size, void* dst, const void* src);
+/// @brief Bitwise right-shift
+void cc_bigint_rsh(size_t size, void* dst, const void* src);
 
 /// @brief Get the sign bit
 int cc_bigint_sign(size_t size, const void* lhs);

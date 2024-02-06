@@ -88,6 +88,23 @@ int test_bigint(void)
         cc_bigint_atoi(sizeof(answer), answer, 16, "5015500e25b14b7ea2cd4c4469e7feca", -1);
         test_assert("lhs must contain the same data as the answer", !memcmp(lhs, answer, sizeof(lhs)));
     }
+    // Test bit shifts
+    {
+        uint8_t rand[16], answer[16];
+        uint8_t lhs[16], rhs[16];
+        cc_bigint_atoi(sizeof(rand), rand, 16, "116955a1e6bc5ae912f87be0cc88af50", -1);
+        cc_bigint_u32(sizeof(rhs), rhs, 70);
+
+        memcpy(lhs, rand, sizeof(lhs));
+        cc_bigint_lsh(sizeof(lhs), lhs, rhs);
+        cc_bigint_atoi(sizeof(answer), answer, 16, "be1ef833222bd4000000000000000000", -1);
+        test_assert("lhs must be shifted left 70 bits", !memcmp(lhs, answer, sizeof(lhs)));
+
+        memcpy(lhs, rand, sizeof(lhs));
+        cc_bigint_rsh(sizeof(lhs), lhs, rhs);
+        cc_bigint_atoi(sizeof(answer), answer, 16, "45a556879af16b", -1);
+        test_assert("lhs must be shifted right 70 bits", !memcmp(lhs, answer, sizeof(lhs)));
+    }
 
     return 1;
 }

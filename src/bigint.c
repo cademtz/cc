@@ -106,6 +106,18 @@ uint8_t* cc_bigint_byteptr(size_t size, void* src, size_t byte_index) {
     return (uint8_t*)cc_bigint_byteptr_const(size, src, byte_index);
 }
 
+const uint8_t* cc_bigint_spanptr_const(size_t size, const void* src, size_t index, size_t len)
+{
+    const uint8_t* begin_ptr = (const uint8_t*)src + index;
+    if (cc_bigint_endianness() == CC_BIGINT_ENDIAN_BIG)
+        begin_ptr = (const uint8_t*)src + size - 1 - len;
+    return begin_ptr;
+}
+
+uint8_t* cc_bigint_spanptr(size_t size, void* src, size_t index, size_t len) {
+    return (uint8_t*)cc_bigint_spanptr_const(size, src, index, len);
+}
+
 uint8_t cc__bigint_add_u8_carry(uint8_t* dst, uint8_t src, uint8_t carry)
 {
     uint16_t result = (uint16_t)*dst + (uint16_t)src + (uint16_t)carry;
@@ -271,6 +283,106 @@ void cc_bigint_xor(size_t size, void* dst, const void* src)
 {
     for (size_t i = 0; i < size; ++i)
         *((uint8_t*)dst + i) ^= *((uint8_t*)src + i);
+}
+
+void cc_bigint_lsh(size_t size, void* dst, const void* src)
+{
+    if (size == 1)
+        *(uint8_t*)dst <<= *(const uint8_t*)src;
+    else if (size == 2)
+        *(uint16_t*)dst <<= *(const uint16_t*)src;
+    else if (size == 4)
+        *(uint32_t*)dst <<= *(const uint32_t*)src;
+    else if (size == 8)
+        *(uint64_t*)dst <<= *(const uint64_t*)src;
+    else
+    {
+        uint32_t shift_bits = 0;
+        for (size_t i = 0; i < sizeof(shift_bits) && i < size; ++i)
+            shift_bits |= cc_bigint_byte(size, src, i) << (i*8);
+        
+        
+        uint32_t shift_bytes = shift_bits / 8; // The number of bytes to shift
+        shift_bits = shift_bits % 8; // The number of bits to shift AFTER the bytes are shifted
+
+        if (shift_bytes >= size)
+        {
+            memset(dst, 0, size);
+            return;
+        }
+        
+        if (shift_bytes)
+        {
+            size_t move_size = size - shift_bytes; // The number of bytes that will remain
+            uint8_t* move_src = cc_bigint_spanptr(size, dst, 0, move_size);
+            uint8_t* move_dst = cc_bigint_spanptr(size, dst, size - move_size, move_size);
+            uint8_t* clear_ptr = cc_bigint_spanptr(size, dst, 0, shift_bytes);
+            memmove(move_dst, move_src, move_size);
+            memset(clear_ptr, 0, shift_bytes);
+        }
+        
+        if (shift_bits)
+        {
+            uint8_t carry = 0;
+            for (size_t i = 0; i < size; ++i)
+            {
+                uint8_t* byteptr = cc_bigint_byteptr(size, dst, i);
+                uint8_t shifted = (*byteptr << shift_bits) | carry;
+                carry = *byteptr >> (8 - shift_bits);
+                *byteptr = shifted;
+            }
+        }
+    }
+}
+
+void cc_bigint_rsh(size_t size, void* dst, const void* src)
+{
+    if (size == 1)
+        *(uint8_t*)dst >>= *(const uint8_t*)src;
+    else if (size == 2)
+        *(uint16_t*)dst >>= *(const uint16_t*)src;
+    else if (size == 4)
+        *(uint32_t*)dst >>= *(const uint32_t*)src;
+    else if (size == 8)
+        *(uint64_t*)dst >>= *(const uint64_t*)src;
+    else
+    {
+        uint32_t shift_bits = 0;
+        for (size_t i = 0; i < sizeof(shift_bits) && i < size; ++i)
+            shift_bits |= cc_bigint_byte(size, src, i) << (i*8);
+        
+        uint32_t shift_bytes = shift_bits / 8; // The number of bytes to shift
+        shift_bits = shift_bits % 8; // The number of bits to shift AFTER the bytes are shifted
+
+        if (shift_bytes >= size)
+        {
+            memset(dst, 0, size);
+            return;
+        }
+        
+        if (shift_bytes)
+        {
+            size_t move_size = size - shift_bytes; // The number of bytes that will remain
+            uint8_t* move_src = cc_bigint_spanptr(size, dst, size - move_size, move_size);
+            uint8_t* move_dst = cc_bigint_spanptr(size, dst, 0, move_size);
+            uint8_t* clear_ptr = cc_bigint_spanptr(size, dst, size - shift_bytes, shift_bytes);
+            memmove(move_dst, move_src, move_size);
+            memset(clear_ptr, 0, shift_bytes);
+        }
+        
+        if (shift_bits)
+        {
+            uint8_t carry = 0;
+            for (size_t i = 0; i < size; ++i)
+            {
+                size_t byte_index = size - 1 - i;
+                uint8_t* byteptr = cc_bigint_byteptr(size, dst, byte_index);
+                uint8_t shifted = (*byteptr >> shift_bits) | carry;
+                carry = *byteptr << (8 - shift_bits);
+                *byteptr = shifted;
+            }
+        }
+    }
 }
 
 int cc_bigint_sign(size_t size, const void* lhs) {
