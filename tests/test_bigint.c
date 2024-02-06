@@ -13,6 +13,18 @@ int test_bigint(void)
 {
     printf("Endianness: %s\n", cc_bigint_endianness() == CC_BIGINT_ENDIAN_LITTLE ? "Little-endian" : "Big-endian");
 
+    // Test string-to-int conversion
+    {
+        uint8_t lhs[16], answer[16];
+        cc_bigint_atoi(sizeof(lhs), lhs, 16, "-11223344", -1);
+        cc_bigint_i32(sizeof(answer), answer, -0x11223344);
+
+        printf("\"-11223344\" -> ");
+        print_bigint(sizeof(lhs), lhs);
+        printf("\n");
+
+        test_assert("lhs must contain the same data as the answer", !memcmp(lhs, answer, sizeof(lhs)));
+    }
     // Test addition and comparison
     {
         uint8_t lhs[16], rhs[16], answer[16];

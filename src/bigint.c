@@ -64,14 +64,15 @@ size_t cc_bigint_atoi(size_t size, void* dst, int radix, const char* str, size_t
     if (str_len == (size_t)-1)
         str_len = strlen(str);
     
-    uint8_t* dst_cursor = (uint8_t*)dst;
-    int direction = cc_bigint_endianness() == CC_BIGINT_ENDIAN_BIG ? -1 : 1;
-
-    if (direction < 0)
-        dst_cursor += size;
-    
     size_t str_index = 0;
-    for (; str_index < str_len; ++str_index, dst_cursor += direction)
+    int sign_bit = 0;
+    if (str_index < str_len && str[str_index] == '-')
+    {
+        sign_bit = 1;
+        ++str_index;
+    }
+
+    for (; str_index < str_len; ++str_index)
     {
         int char_to_int;
         if (!cc__char_to_int(radix, str[str_index], &char_to_int))
@@ -80,6 +81,9 @@ size_t cc_bigint_atoi(size_t size, void* dst, int radix, const char* str, size_t
         cc_bigint_umul_u32(size, dst, (int32_t)radix);
         cc_bigint_add_i32(size, dst, char_to_int);
     }
+
+    if (sign_bit)
+        cc_bigint_neg(size, dst);
 
     return str_index;
 }
