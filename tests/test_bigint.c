@@ -23,7 +23,7 @@ int test_bigint(void)
         print_bigint(sizeof(lhs), lhs);
         printf("\n");
 
-        test_assert("lhs must contain the same data as the answer", !memcmp(lhs, answer, sizeof(lhs)));
+        test_assert("Expected -0x11223344 sign-extended to a 16-byte int", !memcmp(lhs, answer, sizeof(lhs)));
     }
     // Test addition and comparison
     {
@@ -35,11 +35,11 @@ int test_bigint(void)
         cc_bigint_add(sizeof(lhs), lhs, rhs);
 
         printf("Addition:\n");
-        printf("0x0xAABBCCDD + 0xBBCCDDAA: ");
+        printf("0xAABBCCDD + 0xBBCCDDAA: ");
         print_bigint(sizeof(lhs), lhs);
         printf("\n");
 
-        test_assert("lhs must contain the same data as the answer", !memcmp(lhs, answer, sizeof(lhs)));
+        test_assert("Expected 0xAABBCCDD + 0xBBCCDDAA == 0x16688AA87", !memcmp(lhs, answer, sizeof(lhs)));
 
         int comparsion = cc_bigint_cmp(sizeof(lhs), lhs, rhs);
         if (!comparsion)
@@ -47,7 +47,7 @@ int test_bigint(void)
         else
             printf("lhs %c rhs\n", comparsion == 1 ? '>' : '<');
         
-        test_assert("lhs must be greater than rhs", comparsion == 1);
+        test_assert("Expected lhs > rhs", comparsion == 1);
     }
     // Test multiplication
     {
@@ -63,7 +63,7 @@ int test_bigint(void)
         print_bigint(sizeof(lhs), lhs);
         printf("\n");
 
-        test_assert("lhs must contain the same data as the answer", !memcmp(lhs, answer, sizeof(lhs)));
+        test_assert("Expected pow(0xAABBCCDD, 3) in a 16-byte int", !memcmp(lhs, answer, sizeof(lhs)));
     }
     // Test basic bit operations
     {
@@ -76,17 +76,17 @@ int test_bigint(void)
         memcpy(lhs, rand0, sizeof(lhs));
         cc_bigint_and(sizeof(lhs), lhs, rhs);
         cc_bigint_atoi(sizeof(answer), answer, 16, "86422990ca4884005c00b09a00000130", -1);
-        test_assert("lhs must contain the same data as the answer", !memcmp(lhs, answer, sizeof(lhs)));
+        test_assert("Expected the bitwise-and of two random numbers", !memcmp(lhs, answer, sizeof(lhs)));
         
         memcpy(lhs, rand0, sizeof(lhs));
         cc_bigint_or(sizeof(lhs), lhs, rhs);
         cc_bigint_atoi(sizeof(answer), answer, 16, "d657799eeff9cf7efecdfcde69e7fffa", -1);
-        test_assert("lhs must contain the same data as the answer", !memcmp(lhs, answer, sizeof(lhs)));
+        test_assert("Expected the bitwise-or of two random numbers", !memcmp(lhs, answer, sizeof(lhs)));
         
         memcpy(lhs, rand0, sizeof(lhs));
         cc_bigint_xor(sizeof(lhs), lhs, rhs);
         cc_bigint_atoi(sizeof(answer), answer, 16, "5015500e25b14b7ea2cd4c4469e7feca", -1);
-        test_assert("lhs must contain the same data as the answer", !memcmp(lhs, answer, sizeof(lhs)));
+        test_assert("Expected the bitwise-xor of two random numbers", !memcmp(lhs, answer, sizeof(lhs)));
     }
     // Test bit shifts
     {
@@ -98,12 +98,12 @@ int test_bigint(void)
         memcpy(lhs, rand, sizeof(lhs));
         cc_bigint_lsh(sizeof(lhs), lhs, rhs);
         cc_bigint_atoi(sizeof(answer), answer, 16, "be1ef833222bd4000000000000000000", -1);
-        test_assert("lhs must be shifted left 70 bits", !memcmp(lhs, answer, sizeof(lhs)));
+        test_assert("Expected lhs to be shifted left 70 bits", !memcmp(lhs, answer, sizeof(lhs)));
 
         memcpy(lhs, rand, sizeof(lhs));
         cc_bigint_rsh(sizeof(lhs), lhs, rhs);
         cc_bigint_atoi(sizeof(answer), answer, 16, "45a556879af16b", -1);
-        test_assert("lhs must be shifted right 70 bits", !memcmp(lhs, answer, sizeof(lhs)));
+        test_assert("Expected lhs to be shifted right 70 bits", !memcmp(lhs, answer, sizeof(lhs)));
     }
 
     return 1;
