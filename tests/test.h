@@ -9,3 +9,4 @@ int test_expr(void);
 int test_stmt(void);
 int test_function(void);
 int test_vm(void);
+int test_bigint(void);

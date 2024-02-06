@@ -19,6 +19,7 @@ int main(int argc, char** argv)
     run_test("test_x86gen", &test_x86gen);
     run_test("test_block", &test_block);
     run_test("test_vm", &test_vm);
+    run_test("test_bigint", &test_bigint);
 
     printf("Program completed with no crashes");
     return 0;

@@ -7,6 +7,7 @@ SET(CC_SOURCE_LIST
     ${CMAKE_CURRENT_SOURCE_DIR}/x86_asm.c
     ${CMAKE_CURRENT_SOURCE_DIR}/x86_gen.c
     ${CMAKE_CURRENT_SOURCE_DIR}/vm.c
+    ${CMAKE_CURRENT_SOURCE_DIR}/bigint.c
     CACHE INTERNAL "cc library source files"
 )
 
