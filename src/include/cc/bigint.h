@@ -45,11 +45,11 @@ void cc_bigint_neg(size_t size, void* dst);
 /// @brief Bitwise not
 void cc_bigint_not(size_t size, void* dst);
 /// @brief Bitwise and
-void cc_bigint_and(size_t size, void* dst, const void* lhs);
+void cc_bigint_and(size_t size, void* dst, const void* src);
 /// @brief Bitwise or
-void cc_bigint_or(size_t size, void* dst, const void* lhs);
+void cc_bigint_or(size_t size, void* dst, const void* src);
 /// @brief Bitwise exclusive-or
-void cc_bigint_xor(size_t size, void* dst, const void* lhs);
+void cc_bigint_xor(size_t size, void* dst, const void* src);
 
 /// @brief Get the sign bit
 int cc_bigint_sign(size_t size, const void* lhs);
