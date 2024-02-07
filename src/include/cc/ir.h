@@ -66,6 +66,15 @@ enum cc_ir_opcode
     /// @brief Subtract integers
     /// @details Pseudocode: `push(pop() - pop())`
     CC_IR_OPCODE_SUB,
+    /// @brief Multiply unsigned ints
+    /// @details Pseudocode: `push(pop() * pop())`
+    CC_IR_OPCODE_UMUL,
+    /// @brief Divide unsigned ints
+    /// @details Pseudocode: `push(pop() / pop())`
+    CC_IR_OPCODE_UDIV,
+    /// @brief Modulo unsigned ints
+    /// @details Pseudocode: `push(pop() / pop())`
+    CC_IR_OPCODE_UMOD,
 
     // === Control flow ===
 
@@ -260,6 +269,9 @@ void cc_ir_block_sto(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_dup(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_add(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_umul(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_udiv(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_umod(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_call(cc_ir_block* block);
 void cc_ir_block_jmp(cc_ir_block* block);
 void cc_ir_block_jnz(cc_ir_block* block, cc_ir_datasize data_size, const cc_ir_block* dst);
