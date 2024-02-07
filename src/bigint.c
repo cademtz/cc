@@ -343,7 +343,7 @@ void cc_bigint_udiv(size_t size, const void* num, const void* denom, void* quoti
 
         // Skip the first empty bits of the numerator.
         // This is an optional optimization. It targets small numerators inside a large int.
-        for (size_t byte = 0; byte < size; ++byte)
+        for (byte = 0; byte < size; ++byte)
         {
             size_t byte_index = size - 1 - byte;
             for (; bit < 8; ++bit)
@@ -352,11 +352,12 @@ void cc_bigint_udiv(size_t size, const void* num, const void* denom, void* quoti
                 if (cc_bigint_bit(size, num, num_bit_index))
                     goto found_bit; // Break out of two loops
             }
+            bit = 0;
         }
 
     found_bit:
 
-        for (size_t byte = 0; byte < size; ++byte)
+        for (; byte < size; ++byte)
         {
             size_t byte_index = size - 1 - byte;
             for (; bit < 8; ++bit)
