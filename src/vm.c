@@ -14,6 +14,7 @@ void cc_vm_create(cc_vm* vm, size_t stack_size)
 void cc_vm_destroy(cc_vm* vm)
 {
     free(vm->stack);
+    free(vm->scratch);
     memset(vm, 0, sizeof(vm));
 }
 
@@ -135,22 +136,49 @@ void cc_vm_step(cc_vm* vm)
 
     case CC_IR_OPCODE_ADD:
     case CC_IR_OPCODE_SUB:
+    case CC_IR_OPCODE_UMUL:
+    case CC_IR_OPCODE_UDIV:
+    case CC_IR_OPCODE_UMOD:
     {
         uint32_t* lhs = (uint32_t*)cc__vm_pop(vm, ins->data_size);
         uint32_t* rhs = (uint32_t*)cc__vm_pop(vm, ins->data_size);
         if (!lhs || !rhs)
             return;
+
+        const void* result_ptr = lhs;
         
         switch (ins->opcode)
         {
         case CC_IR_OPCODE_ADD: cc_bigint_add(ins->data_size, lhs, rhs); break;
         case CC_IR_OPCODE_SUB: cc_bigint_sub(ins->data_size, lhs, rhs); break;
+        case CC_IR_OPCODE_UMUL: cc_bigint_umul(ins->data_size, lhs, rhs); break;
+        case CC_IR_OPCODE_UDIV:
+        case CC_IR_OPCODE_UMOD:
+        {
+            uint8_t _stack_quotient[8], _stack_remainder[8];
+            void* quotient = _stack_quotient, * remainder = _stack_remainder;
+
+            // Allocate scratch space for the quotient and remainder if required
+            if (ins->data_size > sizeof(_stack_quotient))
+            {
+                vm->scratch = (uint8_t*)realloc(vm->scratch, ins->data_size * 2);
+                quotient = vm->scratch;
+                remainder = vm->scratch + ins->data_size;
+            }
+
+            cc_bigint_udiv(ins->data_size, lhs, rhs, quotient, remainder);
+
+            // Point the result to our quotient or remainder
+            result_ptr = quotient;
+            if (ins->opcode == CC_IR_OPCODE_UMOD)
+                result_ptr = remainder;
+        }
         }
 
         void* dst = cc__vm_push(vm, ins->data_size);
         if (!dst)
             return;
-        memcpy(dst, lhs, ins->data_size);
+        memcpy(dst, result_ptr, ins->data_size);
         break;
     }
 

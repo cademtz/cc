@@ -25,6 +25,10 @@ typedef struct cc_vm
 {
     uint8_t* stack;
     size_t stack_size;
+
+    /// @brief A resizing scratch buffer for bigint operations
+    uint8_t* scratch;
+    size_t scratch_size;
     
     uint8_t* sp;
     size_t ip;
