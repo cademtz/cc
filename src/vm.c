@@ -1,4 +1,5 @@
 #include <cc/vm.h>
+#include <cc/bigint.h>
 #include <string.h>
 #include <malloc.h>
 
@@ -77,18 +78,11 @@ void cc_vm_step(cc_vm* vm)
         uint8_t* write_ptr = cc__vm_push(vm, ins->data_size);
         if (!write_ptr)
             return;
-        
-        if (ins->data_size > sizeof(ins->operand.u32))
-        {
-            write_ptr += ins->data_size - sizeof(ins->operand.u32);
 
-            int clear_byte = 0;
-            if (ins->opcode == CC_IR_OPCODE_ICONST && (int32_t)ins->operand.u32 < 0)
-                clear_byte = 0xFF;
-            memset(vm->sp, clear_byte, ins->data_size);
-        }
-        
-        cc__vm_write_int(vm->sp, ins->operand.u32, ins->data_size);
+        if (ins->opcode == CC_IR_OPCODE_ICONST)
+            cc_bigint_i32(ins->data_size, write_ptr, (int32_t)ins->operand.u32);
+        else
+            cc_bigint_u32(ins->data_size, write_ptr, ins->operand.u32);
         break;
     }
     case CC_IR_OPCODE_LD:
@@ -142,20 +136,21 @@ void cc_vm_step(cc_vm* vm)
     case CC_IR_OPCODE_ADD:
     case CC_IR_OPCODE_SUB:
     {
-        if (ins->data_size == sizeof(uint32_t))
+        uint32_t* lhs = (uint32_t*)cc__vm_pop(vm, sizeof(*lhs));
+        uint32_t* rhs = (uint32_t*)cc__vm_pop(vm, sizeof(*rhs));
+        if (!lhs || !rhs)
+            return;
+        
+        switch (ins->opcode)
         {
-            uint32_t* lhs = (uint32_t*)cc__vm_pop(vm, sizeof(*lhs));
-            uint32_t* rhs = (uint32_t*)cc__vm_pop(vm, sizeof(*rhs));
-            uint32_t* dst = (uint32_t*)cc__vm_push(vm, sizeof(*dst));
-            if (!lhs || !rhs || !dst)
-                return;
-            
-            switch (ins->opcode)
-            {
-            case CC_IR_OPCODE_ADD: *dst = *lhs + *rhs; break;
-            case CC_IR_OPCODE_SUB: *dst = *lhs - *rhs; break;
-            }
+        case CC_IR_OPCODE_ADD: cc_bigint_add(ins->data_size, lhs, rhs); break;
+        case CC_IR_OPCODE_SUB: cc_bigint_sub(ins->data_size, lhs, rhs); break;
         }
+
+        uint32_t* dst = (uint32_t*)cc__vm_push(vm, sizeof(*dst));
+        if (!dst)
+            return;
+        memcpy(dst, lhs, ins->data_size);
         break;
     }
 
