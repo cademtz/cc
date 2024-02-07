@@ -21,6 +21,13 @@ const cc_ir_ins_format cc_ir_ins_formats[CC_IR_OPCODE__COUNT] =
     {"udiv",    {CC_IR_OPERAND_DATASIZE}},
     {"umod",    {CC_IR_OPERAND_DATASIZE}},
 
+    {"not",     {CC_IR_OPERAND_DATASIZE}},
+    {"and",     {CC_IR_OPERAND_DATASIZE}},
+    {"or",      {CC_IR_OPERAND_DATASIZE}},
+    {"xor",     {CC_IR_OPERAND_DATASIZE}},
+    {"lsh",     {CC_IR_OPERAND_DATASIZE}},
+    {"rsh",     {CC_IR_OPERAND_DATASIZE}},
+
     {"call",    {0}},
     {"jmp",     {0}},
     {"jnz",     {CC_IR_OPERAND_DATASIZE, CC_IR_OPERAND_LOCAL}},
@@ -222,6 +229,12 @@ void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_bloc
 void cc_ir_block_umul(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_UMUL, data_size); }
 void cc_ir_block_udiv(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_UDIV, data_size); }
 void cc_ir_block_umod(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_UMOD, data_size); }
+void cc_ir_block_not(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_NOT, data_size); }
+void cc_ir_block_and(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_AND, data_size); }
+void cc_ir_block_or(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_OR, data_size); }
+void cc_ir_block_xor(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_XOR, data_size); }
+void cc_ir_block_lsh(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_LSH, data_size); }
+void cc_ir_block_rsh(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_RSH, data_size); }
 void cc_ir_block_call(cc_ir_block* block) { cc__ir_block_append_noop(block, CC_IR_OPCODE_CALL); }
 void cc_ir_block_jmp(cc_ir_block* block) { cc__ir_block_append_noop(block, CC_IR_OPCODE_JMP); }
 void cc_ir_block_jnz(cc_ir_block* block, cc_ir_datasize data_size, const cc_ir_block* dst)

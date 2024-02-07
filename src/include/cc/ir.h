@@ -76,6 +76,27 @@ enum cc_ir_opcode
     /// @details Pseudocode: `push(pop() / pop())`
     CC_IR_OPCODE_UMOD,
 
+    // === Bitwise operations ===
+
+    /// @brief Bitwise not
+    /// @details Pseudocode: `push(~pop())`
+    CC_IR_OPCODE_NOT,
+    /// @brief Bitwise and
+    /// @details Pseudocode: `push(pop() & pop())`
+    CC_IR_OPCODE_AND,
+    /// @brief Bitwise or
+    /// @details Pseudocode: `push(pop() | pop())`
+    CC_IR_OPCODE_OR,
+    /// @brief Bitwise xor
+    /// @details Pseudocode: `push(pop() ^ pop)`
+    CC_IR_OPCODE_XOR,
+    /// @brief Bitwise left-shift
+    /// @details Pseudocode: `push(pop() << pop())`
+    CC_IR_OPCODE_LSH,
+    /// @brief Bitwise right-shift
+    /// @details Pseudocode: `push(pop() >> pop())`
+    CC_IR_OPCODE_RSH,
+
     // === Control flow ===
 
     /// @brief Call address
@@ -272,6 +293,12 @@ void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_umul(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_udiv(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_umod(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_not(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_and(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_or(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_xor(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_lsh(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_rsh(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_call(cc_ir_block* block);
 void cc_ir_block_jmp(cc_ir_block* block);
 void cc_ir_block_jnz(cc_ir_block* block, cc_ir_datasize data_size, const cc_ir_block* dst);
