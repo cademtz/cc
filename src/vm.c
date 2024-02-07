@@ -136,8 +136,8 @@ void cc_vm_step(cc_vm* vm)
     case CC_IR_OPCODE_ADD:
     case CC_IR_OPCODE_SUB:
     {
-        uint32_t* lhs = (uint32_t*)cc__vm_pop(vm, sizeof(*lhs));
-        uint32_t* rhs = (uint32_t*)cc__vm_pop(vm, sizeof(*rhs));
+        uint32_t* lhs = (uint32_t*)cc__vm_pop(vm, ins->data_size);
+        uint32_t* rhs = (uint32_t*)cc__vm_pop(vm, ins->data_size);
         if (!lhs || !rhs)
             return;
         
@@ -147,7 +147,7 @@ void cc_vm_step(cc_vm* vm)
         case CC_IR_OPCODE_SUB: cc_bigint_sub(ins->data_size, lhs, rhs); break;
         }
 
-        uint32_t* dst = (uint32_t*)cc__vm_push(vm, sizeof(*dst));
+        void* dst = cc__vm_push(vm, ins->data_size);
         if (!dst)
             return;
         memcpy(dst, lhs, ins->data_size);
