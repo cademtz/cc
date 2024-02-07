@@ -75,6 +75,9 @@ enum cc_ir_opcode
     /// @brief Modulo unsigned ints
     /// @details Pseudocode: `push(pop() / pop())`
     CC_IR_OPCODE_UMOD,
+    /// @brief Negate a signed int
+    /// @details Pseudocode: `push(~pop())`
+    CC_IR_OPCODE_NEG,
 
     // === Bitwise operations ===
 
@@ -293,6 +296,7 @@ void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_umul(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_udiv(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_umod(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_neg(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_not(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_and(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_or(cc_ir_block* block, cc_ir_datasize data_size);
