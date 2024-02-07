@@ -134,11 +134,18 @@ void cc_vm_step(cc_vm* vm)
         break;
     }
 
+    // === Binary operations ===
+
     case CC_IR_OPCODE_ADD:
     case CC_IR_OPCODE_SUB:
     case CC_IR_OPCODE_UMUL:
     case CC_IR_OPCODE_UDIV:
     case CC_IR_OPCODE_UMOD:
+    case CC_IR_OPCODE_AND:
+    case CC_IR_OPCODE_OR:
+    case CC_IR_OPCODE_XOR:
+    case CC_IR_OPCODE_LSH:
+    case CC_IR_OPCODE_RSH:
     {
         uint32_t* lhs = (uint32_t*)cc__vm_pop(vm, ins->data_size);
         uint32_t* rhs = (uint32_t*)cc__vm_pop(vm, ins->data_size);
@@ -172,7 +179,14 @@ void cc_vm_step(cc_vm* vm)
             result_ptr = quotient;
             if (ins->opcode == CC_IR_OPCODE_UMOD)
                 result_ptr = remainder;
+            break;
         }
+
+        case CC_IR_OPCODE_AND:  cc_bigint_and(ins->data_size, lhs, rhs); break;
+        case CC_IR_OPCODE_OR:   cc_bigint_or(ins->data_size, lhs, rhs); break;
+        case CC_IR_OPCODE_XOR:  cc_bigint_xor(ins->data_size, lhs, rhs); break;
+        case CC_IR_OPCODE_LSH:  cc_bigint_lsh(ins->data_size, lhs, rhs); break;
+        case CC_IR_OPCODE_RSH:  cc_bigint_rhs(ins->data_size, lhs, rhs); break;
         }
 
         void* dst = cc__vm_push(vm, ins->data_size);
