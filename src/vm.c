@@ -134,6 +134,25 @@ void cc_vm_step(cc_vm* vm)
         break;
     }
 
+    // === Unary operations ===
+
+    case CC_IR_OPCODE_NEG:
+    case CC_IR_OPCODE_NOT:
+    {
+        uint32_t* lhs = (uint32_t*)cc__vm_pop(vm, ins->data_size);
+        if (!lhs)
+            return;
+
+        switch (ins->opcode)
+        {
+        case CC_IR_OPCODE_NEG: cc_bigint_neg(ins->data_size, lhs); break;
+        case CC_IR_OPCODE_NOT: cc_bigint_not(ins->data_size, lhs); break;
+        }
+
+        cc__vm_push(vm, ins->data_size);
+    }
+
+
     // === Binary operations ===
 
     case CC_IR_OPCODE_ADD:
