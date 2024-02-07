@@ -25,7 +25,7 @@ int test_bigint(void)
 
         test_assert("Expected -0x11223344 sign-extended to a 16-byte int", !memcmp(lhs, answer, sizeof(lhs)));
     }
-    // Test addition and comparison
+    // Test addition, subtraction, and comparison
     {
         uint8_t lhs[16], rhs[16], answer[16];
         cc_bigint_u32(sizeof(lhs), lhs, 0xAABBCCDD);
@@ -48,8 +48,16 @@ int test_bigint(void)
             printf("lhs %c rhs\n", comparsion == 1 ? '>' : '<');
         
         test_assert("Expected lhs > rhs", comparsion == 1);
+        
+        cc_bigint_u32(sizeof(lhs), lhs, 0xAABBCCDD);
+        cc_bigint_u32(sizeof(rhs), rhs, 0xBBCCDDAA);
+        cc_bigint_atoi(sizeof(answer), answer, 10, "-286331085", -1);
+
+        cc_bigint_sub(sizeof(lhs), lhs, rhs);
+
+        test_assert("Expected 0xAABBCCDD - 0xBBCCDDAA == -286331085", !memcmp(lhs, answer, sizeof(lhs)));
     }
-    // Test multiplication
+    // Test multiplication and divsion
     {
         uint8_t lhs[16], rhs[16], answer[16];
         cc_bigint_u32(sizeof(lhs), lhs, 0xAABBCCDD);
@@ -64,6 +72,17 @@ int test_bigint(void)
         printf("\n");
 
         test_assert("Expected pow(0xAABBCCDD, 3) in a 16-byte int", !memcmp(lhs, answer, sizeof(lhs)));
+
+        uint8_t quotient[sizeof(lhs)], remainder[sizeof(rhs)];
+        cc_bigint_atoi(sizeof(lhs), lhs, 16, "0000b3e446aa4414182370c311beafa9", -1);
+        cc_bigint_atoi(sizeof(rhs), rhs, 16, "000000000043cc60cc51fd5902cd42d9", -1);
+        cc_bigint_atoi(sizeof(answer), answer, 16, "2a740ed", -1);
+        
+        cc_bigint_udiv(sizeof(lhs), lhs, rhs, quotient, remainder);
+        print_bigint(sizeof(lhs), lhs);
+        printf("\n");
+
+        test_assert("Expected the division of two random numbers", !memcmp(quotient, answer, sizeof(quotient)));
     }
     // Test basic bit operations
     {

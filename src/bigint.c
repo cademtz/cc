@@ -88,6 +88,10 @@ size_t cc_bigint_atoi(size_t size, void* dst, int radix, const char* str, size_t
     return str_index;
 }
 
+uint8_t cc_bigint_bit(size_t size, const void* src, size_t bit_index) {
+    return (cc_bigint_byte(size, src, bit_index / 8) >> (bit_index % 8)) & 1;
+}
+
 uint8_t cc_bigint_byte(size_t size, const void* src, size_t byte_index)
 {
     if (cc_bigint_endianness() == CC_BIGINT_ENDIAN_BIG)
@@ -123,6 +127,13 @@ uint8_t cc__bigint_add_u8_carry(uint8_t* dst, uint8_t src, uint8_t carry)
     uint16_t result = (uint16_t)*dst + (uint16_t)src + (uint16_t)carry;
     *dst = (uint8_t)result;
     return (uint8_t)(result >> 8);
+}
+
+uint8_t cc__bigint_sub_u8_carry(uint8_t* dst, uint8_t src, uint8_t carry)
+{
+    uint16_t result = (uint16_t)*dst - (uint16_t)src - (uint16_t)carry;
+    *dst = (uint8_t)result;
+    return -(uint8_t)(result >> 8);
 }
 
 void cc_bigint_add(size_t size, void* dst, const void* src)
@@ -167,6 +178,51 @@ void cc__bigint_add_32(size_t size, void* dst, uint32_t src, int sign_bit)
                 rhs = cc_bigint_byte(sizeof(src), &src, i);
             carry = cc__bigint_add_u8_carry(cc_bigint_byteptr(size, dst, i), rhs, carry);
         }
+    }
+}
+
+void cc_bigint_sub_32(size_t size, void* dst, const void* src, int sign_bit)
+{
+    if (size == 1)
+        *(uint8_t*)dst -= *(const uint8_t*)src;
+    else if (size == 2)
+        *(uint16_t*)dst -= *(const uint16_t*)src;
+    else if (size == 4)
+        *(uint32_t*)dst -= *(const uint32_t*)src;
+    else if (size == 8)
+        *(uint64_t*)dst -= *(const uint64_t*)src;
+    else
+    {
+        const int sign_extension = sign_bit ? -1 : 0;
+        uint8_t carry = 0;
+
+        // Perform 1-byte subtractions
+        for (size_t i = 0; i < size; ++i)
+        {
+            uint8_t rhs = (uint8_t)sign_extension;
+            if (i < sizeof(src))
+                rhs = cc_bigint_byte(sizeof(src), &src, i);
+            carry = cc__bigint_sub_u8_carry(cc_bigint_byteptr(size, dst, i), cc_bigint_byte(size, src, i), carry);
+        }
+    }
+}
+
+void cc_bigint_sub(size_t size, void* dst, const void* src)
+{
+    if (size == 1)
+        *(uint8_t*)dst -= *(const uint8_t*)src;
+    else if (size == 2)
+        *(uint16_t*)dst -= *(const uint16_t*)src;
+    else if (size == 4)
+        *(uint32_t*)dst -= *(const uint32_t*)src;
+    else if (size == 8)
+        *(uint64_t*)dst -= *(const uint64_t*)src;
+    else
+    {
+        uint8_t carry = 0;
+        // Perform 1-byte subtractions
+        for (size_t i = 0; i < size; ++i)
+            carry = cc__bigint_sub_u8_carry(cc_bigint_byteptr(size, dst, i), cc_bigint_byte(size, src, i), carry);
     }
 }
 
@@ -255,6 +311,77 @@ void cc_bigint_umul_u32(size_t size, void* dst, uint32_t src)
     }
 }
 
+void cc_bigint_udiv(size_t size, const void* num, const void* denom, void* quotient, void* remainder)
+{
+    if (size == 1)
+    {
+        *(uint8_t*)quotient = *(const uint8_t*)num / *(const uint8_t*)denom;
+        *(uint8_t*)remainder = *(const uint8_t*)num - *(uint8_t*)quotient;
+    }
+    else if (size == 2)
+    {
+        *(uint16_t*)quotient = *(const uint16_t*)num / *(const uint16_t*)denom;
+        *(uint16_t*)remainder = *(const uint16_t*)num - *(uint16_t*)quotient;
+    }
+    else if (size == 4)
+    {
+        *(uint32_t*)quotient = *(const uint32_t*)num / *(const uint32_t*)denom;
+        *(uint32_t*)remainder = *(const uint32_t*)num - *(uint32_t*)quotient;
+    }
+    else if (size == 8)
+    {
+        *(uint64_t*)quotient = *(const uint64_t*)num / *(const uint64_t*)denom;
+        *(uint64_t*)remainder = *(const uint64_t*)num - *(uint64_t*)quotient;
+    }
+    else
+    {
+        memset(quotient, 0, size);
+        memset(remainder, 0, size);
+
+        size_t byte = 0;
+        size_t bit = 0;
+
+        // Skip the first empty bits of the numerator.
+        // This is an optional optimization. It targets small numerators inside a large int.
+        for (size_t byte = 0; byte < size; ++byte)
+        {
+            size_t byte_index = size - 1 - byte;
+            for (; bit < 8; ++bit)
+            {
+                size_t num_bit_index = byte_index*8 + 7 - bit;
+                if (cc_bigint_bit(size, num, num_bit_index))
+                    goto found_bit; // Break out of two loops
+            }
+        }
+
+    found_bit:
+
+        for (size_t byte = 0; byte < size; ++byte)
+        {
+            size_t byte_index = size - 1 - byte;
+            for (; bit < 8; ++bit)
+            {
+                // Bit index to read from numerator, starting from the last bit
+                size_t num_bit_index = byte_index*8 + 7 - bit;
+                // Steal next bit from numerator and push into the first bit of the remainder
+                cc_bigint_lsh_u32(size, remainder, 1);
+                *cc_bigint_byteptr(size, remainder, 0) |= cc_bigint_bit(size, num, num_bit_index);
+                // Shift quotient up too
+                cc_bigint_lsh_u32(size, quotient, 1);
+
+                if (cc_bigint_ucmp(size, remainder, denom) >= 0)
+                {
+                    // Remainder is divisible by denominator*1
+                    // Subtract denominator from remainder, set first quotient bit to 1
+                    cc_bigint_sub(size, remainder, denom);
+                    *cc_bigint_byteptr(size, quotient, 0) |= 1;
+                }
+            }
+            bit = 0;
+        }
+    }
+}
+
 void cc_bigint_neg(size_t size, void* dst)
 {
     cc_bigint_not(size, dst);
@@ -300,10 +427,24 @@ void cc_bigint_lsh(size_t size, void* dst, const void* src)
         uint32_t shift_bits = 0;
         for (size_t i = 0; i < sizeof(shift_bits) && i < size; ++i)
             shift_bits |= cc_bigint_byte(size, src, i) << (i*8);
-        
-        
-        uint32_t shift_bytes = shift_bits / 8; // The number of bytes to shift
-        shift_bits = shift_bits % 8; // The number of bits to shift AFTER the bytes are shifted
+        cc_bigint_lsh_u32(size, dst, shift_bits);
+    }
+}
+
+void cc_bigint_lsh_u32(size_t size, void* dst, uint32_t src)
+{
+    if (size == 1)
+        *(uint8_t*)dst <<= src;
+    else if (size == 2)
+        *(uint16_t*)dst <<= src;
+    else if (size == 4)
+        *(uint32_t*)dst <<= src;
+    else if (size == 8)
+        *(uint64_t*)dst <<= src;
+    else
+    {        
+        uint32_t shift_bytes = src / 8; // The number of bytes to shift
+        uint32_t shift_bits = src % 8; // The number of bits to shift AFTER the bytes are shifted
 
         if (shift_bytes >= size)
         {
@@ -350,9 +491,24 @@ void cc_bigint_rsh(size_t size, void* dst, const void* src)
         uint32_t shift_bits = 0;
         for (size_t i = 0; i < sizeof(shift_bits) && i < size; ++i)
             shift_bits |= cc_bigint_byte(size, src, i) << (i*8);
-        
-        uint32_t shift_bytes = shift_bits / 8; // The number of bytes to shift
-        shift_bits = shift_bits % 8; // The number of bits to shift AFTER the bytes are shifted
+        cc_bigint_rsh_u32(size, dst, shift_bits);
+    }
+}
+
+void cc_bigint_rsh_u32(size_t size, void* dst, uint32_t src)
+{
+    if (size == 1)
+        *(uint8_t*)dst >>= src;
+    else if (size == 2)
+        *(uint16_t*)dst >>= src;
+    else if (size == 4)
+        *(uint32_t*)dst >>= src;
+    else if (size == 8)
+        *(uint64_t*)dst >>= src;
+    else
+    {
+        uint32_t shift_bytes = src / 8; // The number of bytes to shift
+        uint32_t shift_bits = src % 8; // The number of bits to shift AFTER the bytes are shifted
 
         if (shift_bytes >= size)
         {
