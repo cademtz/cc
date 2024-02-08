@@ -73,10 +73,10 @@ enum cc_ir_opcode
     /// @details Pseudocode: `push(pop() / pop())`
     CC_IR_OPCODE_UDIV,
     /// @brief Modulo unsigned ints
-    /// @details Pseudocode: `push(pop() / pop())`
+    /// @details Pseudocode: `push(pop() % pop())`
     CC_IR_OPCODE_UMOD,
     /// @brief Negate a signed int
-    /// @details Pseudocode: `push(~pop())`
+    /// @details Pseudocode: `push(-pop())`
     CC_IR_OPCODE_NEG,
 
     // === Bitwise operations ===
