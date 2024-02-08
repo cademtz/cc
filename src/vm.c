@@ -205,7 +205,7 @@ void cc_vm_step(cc_vm* vm)
         case CC_IR_OPCODE_OR:   cc_bigint_or(ins->data_size, lhs, rhs); break;
         case CC_IR_OPCODE_XOR:  cc_bigint_xor(ins->data_size, lhs, rhs); break;
         case CC_IR_OPCODE_LSH:  cc_bigint_lsh(ins->data_size, lhs, rhs); break;
-        case CC_IR_OPCODE_RSH:  cc_bigint_rhs(ins->data_size, lhs, rhs); break;
+        case CC_IR_OPCODE_RSH:  cc_bigint_rsh(ins->data_size, lhs, rhs); break;
         }
 
         void* dst = cc__vm_push(vm, ins->data_size);
