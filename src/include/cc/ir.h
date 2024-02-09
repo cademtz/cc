@@ -25,7 +25,7 @@
 
 #define CC_IR_MAX_OPERANDS 2
 typedef uint16_t cc_ir_localid;
-typedef uint32_t cc_ir_datasize;
+typedef uint16_t cc_ir_datasize;
 
 /// @brief Enum of every opcode
 enum cc_ir_opcode
@@ -136,8 +136,10 @@ enum cc_ir_operand
     CC_IR_OPERAND_NONE,
     /// @brief Local variable
     CC_IR_OPERAND_LOCAL,
-    /// @brief Data size
+    /// @brief Data size of operation (in bytes)
     CC_IR_OPERAND_DATASIZE,
+    /// @brief New data size for integer extension (in bytes)
+    CC_IR_OPERAND_EXTEND_DATASIZE,
     /// @brief A raw 32-bit constant
     CC_IR_OPERAND_U32,
 };
@@ -193,6 +195,8 @@ typedef struct cc_ir_ins
     {
         /// @brief local
         cc_ir_localid local;
+        /// @brief Size to extend an int (in bytes)
+        cc_ir_datasize extend_data_size;
         /// @brief 32-bit constant
         uint32_t u32;
     } operand;

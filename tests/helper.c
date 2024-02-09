@@ -301,15 +301,17 @@ void print_ir_func(const cc_ir_func* func)
             const cc_ir_ins* ins = &block->ins[i];
             const cc_ir_ins_format* fmt = &cc_ir_ins_formats[ins->opcode];
             printf("  %s", fmt->mnemonic);
-            for (int i = 0; i < CC_IR_MAX_OPERANDS; ++i) {
+            for (int i = 0; i < CC_IR_MAX_OPERANDS; ++i)
+            {
                 if (!fmt->operand[i])
                     continue;
 
                 switch (fmt->operand[i])
                 {
-                case CC_IR_OPERAND_U32: printf(" u32:%u,", ins->operand.u32); break;
+                case CC_IR_OPERAND_U32: printf(" u32=%u,", ins->operand.u32); break;
                 case CC_IR_OPERAND_LOCAL: print_ir_local(cc_ir_func_getlocal(func, ins->operand.local)); break;
-                case CC_IR_OPERAND_DATASIZE: printf(" size:%u,", ins->data_size); break;
+                case CC_IR_OPERAND_DATASIZE: printf(" size=%u,", ins->data_size); break;
+                case CC_IR_OPERAND_EXTEND_DATASIZE: printf(" extend_size=%u,", ins->data_size); break;
                 default: printf(" <unknown operand>,"); break;
                 }
             }
