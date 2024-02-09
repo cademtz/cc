@@ -621,3 +621,43 @@ int cc_bigint_ucmp(size_t size, const void* lhs, const void* rhs)
     }
     return 0;
 }
+
+void cc_bigint_extend_sign(size_t dst_size, void* dst, size_t src_size, const void* src)
+{
+    if (dst_size <= src_size)
+    {
+        memcpy(dst, src, dst_size);
+        return;
+    }
+
+    // Copy range: [0, src_size)
+    size_t size_copy_span = src_size;
+    uint8_t* dst_copy_span          = cc_bigint_spanptr(dst_size, dst, 0, size_copy_span);
+    const uint8_t* src_copy_span    = cc_bigint_spanptr_const(src_size, src, 0, size_copy_span);
+    memcpy(dst_copy_span, src_copy_span, size_copy_span);
+    
+    // Fill range: [src_size, dst_size)
+    size_t size_fill_span = dst_size - src_size;
+    uint8_t* fill_span = cc_bigint_spanptr(dst_size, dst, src_size, size_fill_span);
+    memset(fill_span, -cc_bigint_sign(src_size, src), size_fill_span);
+}
+
+void cc_bigint_extend_zero(size_t dst_size, void* dst, size_t src_size, const void* src)
+{
+        if (dst_size <= src_size)
+    {
+        memcpy(dst, src, dst_size);
+        return;
+    }
+
+    // Copy range: [0, src_size)
+    size_t size_copy_span = src_size;
+    uint8_t* dst_copy_span          = cc_bigint_spanptr(dst_size, dst, 0, size_copy_span);
+    const uint8_t* src_copy_span    = cc_bigint_spanptr_const(src_size, src, 0, size_copy_span);
+    memcpy(dst_copy_span, src_copy_span, size_copy_span);
+    
+    // Fill range: [src_size, dst_size)
+    size_t size_fill_span = dst_size - src_size;
+    uint8_t* fill_span = cc_bigint_spanptr(dst_size, dst, src_size, size_fill_span);
+    memset(fill_span, 0, size_fill_span);
+}

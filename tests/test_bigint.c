@@ -150,6 +150,44 @@ int test_bigint(void)
         cc_bigint_atoi(sizeof(answer), answer, 16, "45a556879af16b", -1);
         test_assert("Expected lhs to be shifted right 70 bits", !memcmp(lhs, answer, sizeof(lhs)));
     }
+    // Test integer extension
+    {
+        uint8_t small[4];
+        uint8_t large[16];
+        
+        // Small to large
+        {
+            uint8_t answer[sizeof(large)];
+
+            // Sign-extend
+            cc_bigint_i32(sizeof(small), small, -123456789);
+            cc_bigint_i32(sizeof(answer), answer, -123456789);
+            cc_bigint_extend_sign(sizeof(large), large, sizeof(small), small);
+            test_assert("Expected -123456789 sign-extended from 32-bit to 128-bit", !memcmp(answer, large, sizeof(answer)));
+
+            // Zero-extend
+            cc_bigint_i32(sizeof(small), small, -123456789);
+            cc_bigint_u32(sizeof(answer), answer, (uint32_t)-123456789);
+            cc_bigint_extend_zero(sizeof(large), large, sizeof(small), small);
+            test_assert("Expected -123456789 zero-extended from 32-bit to 128-bit", !memcmp(answer, large, sizeof(answer)));
+        }
+        // Large to small
+        {
+            uint8_t answer[sizeof(small)];
+
+            // Sign-extend
+            cc_bigint_i32(sizeof(large), large, -123456789);
+            cc_bigint_i32(sizeof(answer), answer, -123456789);
+            cc_bigint_extend_sign(sizeof(small), small, sizeof(large), large);
+            test_assert("Expected -123456789 sign-extended from 128-bit to 32-bit", !memcmp(answer, small, sizeof(answer)));
+
+            // Zero-extend
+            cc_bigint_i32(sizeof(large), large, -123456789);
+            cc_bigint_u32(sizeof(answer), answer, (uint32_t)-123456789);
+            cc_bigint_extend_zero(sizeof(small), small, sizeof(large), large);
+            test_assert("Expected -123456789 zero-extended from 128-bit to 32-bit", !memcmp(answer, small, sizeof(answer)));
+        }
+    }
 
     return 1;
 }

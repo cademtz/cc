@@ -102,3 +102,14 @@ void cc_bigint_lsh_u32(size_t size, void* dst, uint32_t src);
 void cc_bigint_rsh(size_t size, void* dst, const void* src);
 /// @brief Bitwise right-shift
 void cc_bigint_rsh_u32(size_t size, void* dst, uint32_t src);
+
+// === Casting ===
+
+/// @brief Sign-extend integer
+/// @param dst The output. Can be the same as `src`, otherwise it must not overlapping.
+/// @param src The input, to be extended and stored in `dst`
+void cc_bigint_extend_sign(size_t dst_size, void* dst, size_t src_size, const void* src);
+/// @brief Zero-extend integer
+/// @param dst The output. Can be the same as `src`, otherwise it must not overlapping.
+/// @param src The input, to be extended and stored in `dst`
+void cc_bigint_extend_zero(size_t dst_size, void* dst, size_t src_size, const void* src);
