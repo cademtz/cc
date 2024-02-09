@@ -249,6 +249,40 @@ static void cc__bigint_mul_byte(size_t size, void* dst, uint8_t lhs, size_t lhs_
     }
 }
 
+void cc_bigint_mul(size_t size, void* dst, void* src)
+{
+    int lhs_signbit = cc_bigint_sign(size, dst);
+    int rhs_signbit = cc_bigint_sign(size, src);
+
+    if (lhs_signbit)
+        cc_bigint_neg(size, dst);
+    if (rhs_signbit)
+        cc_bigint_neg(size, src);
+    
+    cc_bigint_umul(size, dst, src);
+    int final_signbit = lhs_signbit ^ rhs_signbit;
+
+    if (final_signbit)
+        cc_bigint_neg(size, dst);
+}
+
+void cc_bigint_mul_i32(size_t size, void* dst, int32_t src)
+{
+    int lhs_signbit = cc_bigint_sign(size, dst);
+    int rhs_signbit = cc_bigint_sign(sizeof(src), &src);
+
+    if (lhs_signbit)
+        cc_bigint_neg(size, dst);
+    if (rhs_signbit)
+        src = -src;
+    
+    cc_bigint_umul_u32(size, dst, (uint32_t)src);
+    int final_signbit = lhs_signbit ^ rhs_signbit;
+
+    if (final_signbit)
+        cc_bigint_neg(size, dst);
+}
+
 void cc_bigint_umul(size_t size, void* dst, const void* src)
 {
     if (size == 1)

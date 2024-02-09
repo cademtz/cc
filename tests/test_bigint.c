@@ -60,6 +60,9 @@ int test_bigint(void)
     // Test multiplication and divsion
     {
         uint8_t lhs[16], rhs[16], answer[16];
+        
+        // Unsigned multiplication
+
         cc_bigint_u32(sizeof(lhs), lhs, 0xAABBCCDD);
         cc_bigint_u32(sizeof(rhs), rhs, 0xAABBCCDD);
         cc_bigint_atoi(sizeof(answer), answer, 16, "4bf0ed84d3569e21c8263785", -1);
@@ -72,6 +75,17 @@ int test_bigint(void)
         printf("\n");
 
         test_assert("Expected pow(0xAABBCCDD, 3) in a 16-byte int", !memcmp(lhs, answer, sizeof(lhs)));
+
+        // Signed multiplication
+        cc_bigint_i32(sizeof(lhs), lhs, -0x11223344);
+        cc_bigint_i32(sizeof(rhs), rhs, -0x11223344);
+        cc_bigint_atoi(sizeof(answer), answer, 16, "-13a5bd40175ac840dc5c40", -1);
+
+        cc_bigint_mul(sizeof(lhs), lhs, rhs);
+        cc_bigint_i32(sizeof(rhs), rhs, -0x11223344);
+        cc_bigint_mul(sizeof(lhs), lhs, rhs);
+        
+        test_assert("Expected pow(-0x11223344, 3) == -0x13a5bd40175ac840dc5c40", !memcmp(lhs, answer, sizeof(lhs)));
 
         uint8_t quotient[sizeof(lhs)], remainder[sizeof(rhs)];
         cc_bigint_atoi(sizeof(lhs), lhs, 16, "0000b3e446aa4414182370c311beafa9", -1);

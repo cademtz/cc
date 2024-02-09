@@ -46,6 +46,10 @@ void cc__bigint_sub_32(size_t size, void* dst, uint32_t src, int sign_bit);
 static void cc_bigint_sub_i32(size_t size, void* dst, int32_t src) { cc__bigint_sub_32(size, dst, (uint32_t)src, src >> 31); }
 static void cc_bigint_sub_u32(size_t size, void* dst, uint32_t src) { cc__bigint_sub_32(size, dst, src, 0); }
 
+/// @brief Signed multiplication
+/// @param src Will become a positive number
+void cc_bigint_mul(size_t size, void* dst, void* src);
+void cc_bigint_mul_i32(size_t size, void* dst, int32_t src);
 /// @brief Unsigned multiplication
 void cc_bigint_umul(size_t size, void* dst, const void* src);
 /// @brief Unsigned multiplication
