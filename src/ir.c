@@ -32,6 +32,9 @@ const cc_ir_ins_format cc_ir_ins_formats[CC_IR_OPCODE__COUNT] =
     {"lsh",     {CC_IR_OPERAND_DATASIZE}},
     {"rsh",     {CC_IR_OPERAND_DATASIZE}},
 
+    {"zext",    {CC_IR_OPERAND_DATASIZE, CC_IR_OPERAND_EXTEND_DATASIZE}},
+    {"sext",    {CC_IR_OPERAND_DATASIZE, CC_IR_OPERAND_EXTEND_DATASIZE}},
+
     {"call",    {0}},
     {"jmp",     {0}},
     {"jnz",     {CC_IR_OPERAND_DATASIZE, CC_IR_OPERAND_LOCAL}},
@@ -243,6 +246,16 @@ void cc_ir_block_or(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block
 void cc_ir_block_xor(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_XOR, data_size); }
 void cc_ir_block_lsh(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_LSH, data_size); }
 void cc_ir_block_rsh(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_RSH, data_size); }
+void cc_ir_block_zext(cc_ir_block* block, cc_ir_datasize data_size, cc_ir_datasize extend_data_size)
+{
+    cc__ir_block_append_sizeop(block, CC_IR_OPCODE_ZEXT, data_size);
+    block->ins[block->num_ins - 1].operand.extend_data_size = extend_data_size;
+}
+void cc_ir_block_sext(cc_ir_block* block, cc_ir_datasize data_size, cc_ir_datasize extend_data_size)
+{
+    cc__ir_block_append_sizeop(block, CC_IR_OPCODE_SEXT, data_size);
+    block->ins[block->num_ins - 1].operand.extend_data_size = extend_data_size;
+}
 void cc_ir_block_call(cc_ir_block* block) { cc__ir_block_append_noop(block, CC_IR_OPCODE_CALL); }
 void cc_ir_block_jmp(cc_ir_block* block) { cc__ir_block_append_noop(block, CC_IR_OPCODE_JMP); }
 void cc_ir_block_jnz(cc_ir_block* block, cc_ir_datasize data_size, const cc_ir_block* dst)

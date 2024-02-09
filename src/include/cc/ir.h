@@ -109,6 +109,15 @@ enum cc_ir_opcode
     /// @details Pseudocode: `push(pop() >> pop())`
     CC_IR_OPCODE_RSH,
 
+    // === Casting ===
+
+    /// @brief Zero-extend an int
+    /// @details Pseudocode: `push((uintx_t)pop())`
+    CC_IR_OPCODE_ZEXT,
+    /// @brief Sign-extend an int
+    /// @details Pseudocode: `push((intx_t)pop())`
+    CC_IR_OPCODE_SEXT,
+
     // === Control flow ===
 
     /// @brief Call address
@@ -319,6 +328,8 @@ void cc_ir_block_or(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_xor(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_lsh(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_rsh(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_zext(cc_ir_block* block, cc_ir_datasize data_size, cc_ir_datasize extend_data_size);
+void cc_ir_block_sext(cc_ir_block* block, cc_ir_datasize data_size, cc_ir_datasize extend_data_size);
 void cc_ir_block_call(cc_ir_block* block);
 void cc_ir_block_jmp(cc_ir_block* block);
 void cc_ir_block_jnz(cc_ir_block* block, cc_ir_datasize data_size, const cc_ir_block* dst);
