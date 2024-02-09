@@ -138,18 +138,30 @@ void cc_vm_step(cc_vm* vm)
 
     case CC_IR_OPCODE_NEG:
     case CC_IR_OPCODE_NOT:
+    case CC_IR_OPCODE_ZEXT:
+    case CC_IR_OPCODE_SEXT:
     {
         uint32_t* lhs = (uint32_t*)cc__vm_pop(vm, ins->data_size);
         if (!lhs)
             return;
 
+        size_t push_size = ins->data_size;
+
         switch (ins->opcode)
         {
         case CC_IR_OPCODE_NEG: cc_bigint_neg(ins->data_size, lhs); break;
         case CC_IR_OPCODE_NOT: cc_bigint_not(ins->data_size, lhs); break;
+        case CC_IR_OPCODE_ZEXT:
+        case CC_IR_OPCODE_SEXT:
+            push_size = ins->operand.extend_data_size;
+            if (ins->opcode == CC_IR_OPCODE_ZEXT)
+                cc_bigint_extend_zero(ins->operand.extend_data_size, lhs, ins->data_size, lhs);
+            else
+                cc_bigint_extend_sign(ins->operand.extend_data_size, lhs, ins->data_size, lhs);
+            break;
         }
 
-        cc__vm_push(vm, ins->data_size);
+        cc__vm_push(vm, push_size);
     }
 
 
