@@ -87,6 +87,8 @@ int test_bigint(void)
         
         test_assert("Expected pow(-0x11223344, 3) == -0x13a5bd40175ac840dc5c40", !memcmp(lhs, answer, sizeof(lhs)));
 
+        // Unsigned division
+
         uint8_t quotient[sizeof(lhs)], remainder[sizeof(rhs)];
         cc_bigint_atoi(sizeof(lhs), lhs, 16, "0000b3e446aa4414182370c311beafa9", -1);
         cc_bigint_atoi(sizeof(rhs), rhs, 16, "000000000043cc60cc51fd5902cd42d9", -1);
@@ -95,6 +97,16 @@ int test_bigint(void)
         cc_bigint_udiv(sizeof(lhs), lhs, rhs, quotient, remainder);
         print_bigint(sizeof(lhs), lhs);
         printf("\n");
+
+        test_assert("Expected the division of two random numbers", !memcmp(quotient, answer, sizeof(quotient)));
+
+        // Signed division
+
+        cc_bigint_atoi(sizeof(lhs), lhs, 16, "-0000b3e446aa4414182370c311beafa9", -1);
+        cc_bigint_atoi(sizeof(rhs), rhs, 16, "000000000043cc60cc51fd5902cd42d9", -1);
+        cc_bigint_atoi(sizeof(answer), answer, 16, "-2a740ed", -1);
+
+        cc_bigint_div(sizeof(lhs), lhs, rhs, quotient, remainder);
 
         test_assert("Expected the division of two random numbers", !memcmp(quotient, answer, sizeof(quotient)));
     }

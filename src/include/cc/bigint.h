@@ -54,6 +54,12 @@ void cc_bigint_mul_i32(size_t size, void* dst, int32_t src);
 void cc_bigint_umul(size_t size, void* dst, const void* src);
 /// @brief Unsigned multiplication
 void cc_bigint_umul_u32(size_t size, void* dst, uint32_t src);
+/// @brief Signed division, the C way
+/// @param num The numerator. Will become a positive number.
+/// @param denom The denominator. Will become a positive number.
+/// @param quotient Destination for the quotient
+/// @param remainder Destination for the remainder
+void cc_bigint_div(size_t size, void* num, void* denom, void* quotient, void* remainder);
 /// @brief Unsigned division
 /// @param num The numerator
 /// @param denom The denominator

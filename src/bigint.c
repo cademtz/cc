@@ -345,6 +345,26 @@ void cc_bigint_umul_u32(size_t size, void* dst, uint32_t src)
     }
 }
 
+void cc_bigint_div(size_t size, void* num, void* denom, void* quotient, void* remainder)
+{
+    int lhs_signbit = cc_bigint_sign(size, num);
+    int rhs_signbit = cc_bigint_sign(size, denom);
+
+    if (lhs_signbit)
+        cc_bigint_neg(size, num);
+    if (rhs_signbit)
+        cc_bigint_neg(size, denom);
+    
+    cc_bigint_umul(size, num, denom);
+    int final_signbit = lhs_signbit ^ rhs_signbit;
+
+    if (final_signbit)
+    {
+        cc_bigint_neg(size, quotient);
+        cc_bigint_neg(size, remainder);
+    }
+}
+
 void cc_bigint_udiv(size_t size, const void* num, const void* denom, void* quotient, void* remainder)
 {
     if (size == 1)
