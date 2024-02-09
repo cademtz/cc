@@ -300,8 +300,11 @@ cc_ir_localid cc_ir_func_clonelocal(cc_ir_func* func, cc_ir_localid localid, con
  */
 void cc_ir_block_insert(cc_ir_block* block, size_t index, const cc_ir_ins* ins);
 /// @brief Append an instruction to the block
-static inline void cc_ir_block_append(cc_ir_block* block, const cc_ir_ins* ins) {
+/// @return The appended instruction's index
+static inline size_t cc_ir_block_append(cc_ir_block* block, const cc_ir_ins* ins)
+{
     cc_ir_block_insert(block, block->num_ins, ins);
+    return block->num_ins - 1;
 }
 
 void cc_ir_block_la(cc_ir_block* block, cc_ir_localid localid);
