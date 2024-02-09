@@ -78,7 +78,7 @@ enum cc_ir_opcode
     /// @brief Divide unsigned ints
     /// @details Pseudocode: `push(pop() / pop())`
     CC_IR_OPCODE_UDIV,
-    /// @brief Modulo nsigned ints
+    /// @brief Modulo signed ints
     /// @details Pseudocode: `push(pop() % pop())`
     CC_IR_OPCODE_MOD,
     /// @brief Modulo unsigned ints
