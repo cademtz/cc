@@ -177,8 +177,11 @@ void cc_vm_step(cc_vm* vm)
         {
         case CC_IR_OPCODE_ADD: cc_bigint_add(ins->data_size, lhs, rhs); break;
         case CC_IR_OPCODE_SUB: cc_bigint_sub(ins->data_size, lhs, rhs); break;
+        case CC_IR_OPCODE_MUL: cc_bigint_mul(ins->data_size, lhs, rhs); break;
         case CC_IR_OPCODE_UMUL: cc_bigint_umul(ins->data_size, lhs, rhs); break;
+        case CC_IR_OPCODE_DIV:
         case CC_IR_OPCODE_UDIV:
+        case CC_IR_OPCODE_MOD:
         case CC_IR_OPCODE_UMOD:
         {
             uint8_t _stack_quotient[8], _stack_remainder[8];
@@ -192,7 +195,11 @@ void cc_vm_step(cc_vm* vm)
                 remainder = vm->scratch + ins->data_size;
             }
 
-            cc_bigint_udiv(ins->data_size, lhs, rhs, quotient, remainder);
+            // Signed operation
+            if (ins->opcode == CC_IR_OPCODE_DIV || ins->opcode == CC_IR_OPCODE_MOD)
+                cc_bigint_div(ins->data_size, lhs, rhs, quotient, remainder);
+            else // Unsigned operation
+                cc_bigint_udiv(ins->data_size, lhs, rhs, quotient, remainder);
 
             // Point the result to our quotient or remainder
             result_ptr = quotient;
