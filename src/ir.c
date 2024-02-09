@@ -17,8 +17,11 @@ const cc_ir_ins_format cc_ir_ins_formats[CC_IR_OPCODE__COUNT] =
 
     {"add",     {CC_IR_OPERAND_DATASIZE}},
     {"sub",     {CC_IR_OPERAND_DATASIZE}},
+    {"mul",     {CC_IR_OPERAND_DATASIZE}},
     {"umul",    {CC_IR_OPERAND_DATASIZE}},
+    {"div",     {CC_IR_OPERAND_DATASIZE}},
     {"udiv",    {CC_IR_OPERAND_DATASIZE}},
+    {"mod",     {CC_IR_OPERAND_DATASIZE}},
     {"umod",    {CC_IR_OPERAND_DATASIZE}},
     {"neg",     {CC_IR_OPERAND_DATASIZE}},
 
@@ -227,8 +230,11 @@ void cc_ir_block_sto(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_bloc
 void cc_ir_block_dup(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_DUP, data_size); }
 void cc_ir_block_add(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_ADD, data_size); }
 void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_SUB, data_size); }
+void cc_ir_block_mul(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_MUL, data_size); }
 void cc_ir_block_umul(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_UMUL, data_size); }
+void cc_ir_block_div(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_DIV, data_size); }
 void cc_ir_block_udiv(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_UDIV, data_size); }
+void cc_ir_block_mod(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_MOD, data_size); }
 void cc_ir_block_umod(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_UMOD, data_size); }
 void cc_ir_block_neg(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_NEG, data_size); }
 void cc_ir_block_not(cc_ir_block* block, cc_ir_datasize data_size) { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_NOT, data_size); }

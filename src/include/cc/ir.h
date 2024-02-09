@@ -66,12 +66,21 @@ enum cc_ir_opcode
     /// @brief Subtract integers
     /// @details Pseudocode: `push(pop() - pop())`
     CC_IR_OPCODE_SUB,
+    /// @brief Multiply signed ints
+    /// @details Pseudocode: `push(pop() * pop())`
+    CC_IR_OPCODE_MUL,
     /// @brief Multiply unsigned ints
     /// @details Pseudocode: `push(pop() * pop())`
     CC_IR_OPCODE_UMUL,
+    /// @brief Divide signed ints
+    /// @details Pseudocode: `push(pop() / pop())`
+    CC_IR_OPCODE_DIV,
     /// @brief Divide unsigned ints
     /// @details Pseudocode: `push(pop() / pop())`
     CC_IR_OPCODE_UDIV,
+    /// @brief Modulo nsigned ints
+    /// @details Pseudocode: `push(pop() % pop())`
+    CC_IR_OPCODE_MOD,
     /// @brief Modulo unsigned ints
     /// @details Pseudocode: `push(pop() % pop())`
     CC_IR_OPCODE_UMOD,
@@ -293,8 +302,11 @@ void cc_ir_block_sto(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_dup(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_add(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_mul(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_umul(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_div(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_udiv(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_mod(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_umod(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_neg(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_not(cc_ir_block* block, cc_ir_datasize data_size);
