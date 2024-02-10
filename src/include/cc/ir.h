@@ -30,14 +30,17 @@ typedef uint16_t cc_ir_datasize;
 /// @brief Enum of every opcode
 enum cc_ir_opcode
 {
-    // === Loading and storing locals ===
+    // === Locals ===
 
-    /// @brief Push a local's address
-    CC_IR_OPCODE_LA,
-    /// @brief Push a local's size
-    CC_IR_OPCODE_LS,
-    /// @brief Push a local's value
-    CC_IR_OPCODE_LLD,
+    /// @brief Address of local
+    /// @details Pseudocode: `push(&local)`
+    CC_IR_OPCODE_ADDRL,
+    /// @brief Size of local
+    /// @details Pseudocode: `push(sizeof(local))`
+    CC_IR_OPCODE_SIZEL,
+    /// @brief Load local
+    /// @details Pseudocode: `push(local)`
+    CC_IR_OPCODE_LOADL,
 
     // === Loading and storing ===
 
@@ -49,12 +52,12 @@ enum cc_ir_opcode
     CC_IR_OPCODE_UCONST,
     /// @brief Load value at address
     /// @details Pseudocode: `push(*pop())`
-    CC_IR_OPCODE_LD,
+    CC_IR_OPCODE_LOAD,
     /// @brief Store value at address
     /// @details Pseudocode: `*pop() = pop()`
-    CC_IR_OPCODE_STO,
+    CC_IR_OPCODE_STORE,
     /// @brief Duplicate the last n bytes on the stack
-    CC_IR_OPCODE_DUP,
+    CC_IR_OPCODE_DUPE,
     
     // === Arithmetic ===
 
@@ -307,14 +310,14 @@ static inline size_t cc_ir_block_append(cc_ir_block* block, const cc_ir_ins* ins
     return block->num_ins - 1;
 }
 
-void cc_ir_block_la(cc_ir_block* block, cc_ir_localid localid);
-void cc_ir_block_ls(cc_ir_block* block, cc_ir_datasize data_size, cc_ir_localid localid);
-void cc_ir_block_lld(cc_ir_block* block, cc_ir_localid localid);
+void cc_ir_block_addrl(cc_ir_block* block, cc_ir_localid localid);
+void cc_ir_block_sizel(cc_ir_block* block, cc_ir_datasize data_size, cc_ir_localid localid);
+void cc_ir_block_loadl(cc_ir_block* block, cc_ir_localid localid);
 void cc_ir_block_iconst(cc_ir_block* block, cc_ir_datasize data_size, int32_t value);
 void cc_ir_block_uconst(cc_ir_block* block, cc_ir_datasize data_size, uint32_t value);
-void cc_ir_block_ld(cc_ir_block* block, cc_ir_datasize data_size);
-void cc_ir_block_sto(cc_ir_block* block, cc_ir_datasize data_size);
-void cc_ir_block_dup(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_load(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_store(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_dupe(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_add(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_mul(cc_ir_block* block, cc_ir_datasize data_size);

@@ -51,7 +51,7 @@ void cc_vm_step(cc_vm* vm)
     // Execute...
     switch (ins->opcode)
     {
-    case CC_IR_OPCODE_LA:
+    case CC_IR_OPCODE_ADDRL:
     {
         size_t offset = cc__vm_local_stack_offset(vm, ins->operand.local);
         if (offset == (size_t)-1)
@@ -68,7 +68,7 @@ void cc_vm_step(cc_vm* vm)
         *ptr_on_stack = vm->locals_sp + offset;
         break;
     }
-    case CC_IR_OPCODE_LS:
+    case CC_IR_OPCODE_SIZEL:
     {
         const cc_ir_local* local = cc_ir_func_getlocal(vm->ip_func, ins->operand.local);
         size_t local_size = 0;
@@ -88,7 +88,7 @@ void cc_vm_step(cc_vm* vm)
         cc_bigint_u32(ins->data_size, value_on_stack, (uint32_t)local_size);
         break;
     }
-    case CC_IR_OPCODE_LLD:
+    case CC_IR_OPCODE_LOADL:
     {
         const cc_ir_local* local = cc_ir_func_getlocal(vm->ip_func, ins->operand.local);
         size_t local_size = 0;
@@ -123,7 +123,7 @@ void cc_vm_step(cc_vm* vm)
             cc_bigint_u32(ins->data_size, write_ptr, ins->operand.u32);
         break;
     }
-    case CC_IR_OPCODE_LD:
+    case CC_IR_OPCODE_LOAD:
     {
         // Pop the source pointer
         void** src_ptr_on_stack = (void**)cc__vm_pop(vm, sizeof(void*));
@@ -139,7 +139,7 @@ void cc_vm_step(cc_vm* vm)
         memcpy(dst_ptr, src_ptr, ins->data_size);
         break;
     }
-    case CC_IR_OPCODE_STO:
+    case CC_IR_OPCODE_STORE:
     {
         // Pop the destination pointer
         void** dst_ptr_on_stack = (void**)cc__vm_pop(vm, sizeof(void*));
@@ -156,7 +156,7 @@ void cc_vm_step(cc_vm* vm)
         memcpy(dst_ptr, src_ptr, ins->data_size);
         break;
     }
-    case CC_IR_OPCODE_DUP:
+    case CC_IR_OPCODE_DUPE:
     {
         const void* src = cc__vm_pop(vm, ins->data_size);
         if (!src)

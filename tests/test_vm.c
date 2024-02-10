@@ -22,30 +22,30 @@ int test_vm(void)
     // A simple program that leaves the number 14 on the stack after execution
                                                 // entry:
     cc_ir_block_uconst(entry, INT_SIZE, 9);     //   x = 9
-    cc_ir_block_la(entry, x);                   //
-    cc_ir_block_sto(entry, INT_SIZE);           //
+    cc_ir_block_addrl(entry, x);                   //
+    cc_ir_block_store(entry, INT_SIZE);           //
                                                 // loop:
     cc_ir_block_uconst(loop, INT_SIZE, 1);      //   x -= 1
-    cc_ir_block_lld(loop, x);                   //
+    cc_ir_block_loadl(loop, x);                   //
     cc_ir_block_sub(loop, INT_SIZE);            //
-    cc_ir_block_la(loop, x);                    //
-    cc_ir_block_sto(loop, INT_SIZE);            //
+    cc_ir_block_addrl(loop, x);                    //
+    cc_ir_block_store(loop, INT_SIZE);            //
     cc_ir_block_uconst(loop, INT_SIZE, 9);      //   x *= 9
-    cc_ir_block_lld(loop, x);                   //
+    cc_ir_block_loadl(loop, x);                   //
     cc_ir_block_umul(loop, INT_SIZE);           //
-    cc_ir_block_la(loop, x);                    //
-    cc_ir_block_sto(loop, INT_SIZE);            //
-    cc_ir_block_lld(loop, x);                   //   x = 10000 / x
+    cc_ir_block_addrl(loop, x);                    //
+    cc_ir_block_store(loop, INT_SIZE);            //
+    cc_ir_block_loadl(loop, x);                   //   x = 10000 / x
     cc_ir_block_uconst(loop, INT_SIZE, 10000);  //
     cc_ir_block_udiv(loop, INT_SIZE);           //
-    cc_ir_block_la(loop, x);                    //
-    cc_ir_block_sto(loop, INT_SIZE);            //
-    cc_ir_block_lld(loop, x);                   //   if (x != answer) then goto loop
+    cc_ir_block_addrl(loop, x);                    //
+    cc_ir_block_store(loop, INT_SIZE);            //
+    cc_ir_block_loadl(loop, x);                   //   if (x != answer) then goto loop
     cc_ir_block_uconst(loop, INT_SIZE, answer); //
     cc_ir_block_sub(loop, INT_SIZE);            //
     cc_ir_block_jnz(loop, INT_SIZE, loop);      //
                                                 // end:
-    cc_ir_block_lld(end, x);                    //   push(x)
+    cc_ir_block_loadl(end, x);                    //   push(x)
     cc_ir_block_ret(end);                       //   return
 
     printf("IR:\n");
