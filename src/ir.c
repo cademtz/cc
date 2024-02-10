@@ -7,7 +7,6 @@ const cc_ir_ins_format cc_ir_ins_formats[CC_IR_OPCODE__COUNT] =
     {"la",      {CC_IR_OPERAND_LOCAL}},
     {"ls",      {CC_IR_OPERAND_DATASIZE, CC_IR_OPERAND_LOCAL}},
     {"lld",     {CC_IR_OPERAND_LOCAL}},
-    {"lsto",    {CC_IR_OPERAND_LOCAL}},
 
     {"iconst",  {CC_IR_OPERAND_DATASIZE, CC_IR_OPERAND_U32}},
     {"uconst",  {CC_IR_OPERAND_DATASIZE, CC_IR_OPERAND_U32}},
@@ -221,7 +220,6 @@ void cc_ir_block_ls(cc_ir_block* block, cc_ir_datasize data_size, cc_ir_localid 
     block->ins[index].data_size = data_size;
 }
 void cc_ir_block_lld(cc_ir_block* block, cc_ir_localid localid) { cc__ir_block_append_localop(block, CC_IR_OPCODE_LLD, localid); }
-void cc_ir_block_lsto(cc_ir_block* block, cc_ir_localid localid) { cc__ir_block_append_localop(block, CC_IR_OPCODE_LSTO, localid); }
 void cc_ir_block_iconst(cc_ir_block* block, cc_ir_datasize data_size, int32_t value)
 {
     size_t index = cc__ir_block_append_u32op(block, CC_IR_OPCODE_ICONST, (uint32_t)value);

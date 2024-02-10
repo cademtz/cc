@@ -38,8 +38,6 @@ enum cc_ir_opcode
     CC_IR_OPCODE_LS,
     /// @brief Push a local's value
     CC_IR_OPCODE_LLD,
-    /// @brief Store value in local
-    CC_IR_OPCODE_LSTO,
 
     // === Loading and storing ===
 
@@ -310,7 +308,6 @@ static inline size_t cc_ir_block_append(cc_ir_block* block, const cc_ir_ins* ins
 void cc_ir_block_la(cc_ir_block* block, cc_ir_localid localid);
 void cc_ir_block_ls(cc_ir_block* block, cc_ir_datasize data_size, cc_ir_localid localid);
 void cc_ir_block_lld(cc_ir_block* block, cc_ir_localid localid);
-void cc_ir_block_lsto(cc_ir_block* block, cc_ir_localid localid);
 void cc_ir_block_iconst(cc_ir_block* block, cc_ir_datasize data_size, int32_t value);
 void cc_ir_block_uconst(cc_ir_block* block, cc_ir_datasize data_size, uint32_t value);
 void cc_ir_block_ld(cc_ir_block* block, cc_ir_datasize data_size);
