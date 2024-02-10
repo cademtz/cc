@@ -3,12 +3,13 @@
 #include <string.h>
 #include <malloc.h>
 
-void cc_vm_create(cc_vm* vm, size_t stack_size)
+void cc_vm_create(cc_vm* vm, size_t stack_size, const cc_ir_func* entrypoint)
 {
     memset(vm, 0, sizeof(*vm));
     vm->stack_size = stack_size;
     vm->stack = (uint8_t*)malloc(stack_size);
     vm->sp = vm->stack + vm->stack_size;
+    cc__vm_enter_func(vm, entrypoint);
 }
 
 void cc_vm_destroy(cc_vm* vm)
@@ -52,9 +53,8 @@ void cc_vm_step(cc_vm* vm)
     {
     case CC_IR_OPCODE_LA:
     {
-        // Get local by ID
-        const cc_ir_local* local = cc_ir_func_getlocal(vm->ip_func, ins->operand.local);
-        if (!local)
+        size_t offset = cc__vm_local_stack_offset(vm, ins->operand.local);
+        if (offset == (size_t)-1)
         {
             vm->vmexception = CC_VMEXCEPTION_INVALID_LOCALID;
             return;
@@ -65,12 +65,49 @@ void cc_vm_step(cc_vm* vm)
         if (!ptr_on_stack)
             return;
 
-        switch (local->localtypeid)
+        *ptr_on_stack = vm->locals_sp + offset;
+        break;
+    }
+    case CC_IR_OPCODE_LS:
+    {
+        const cc_ir_local* local = cc_ir_func_getlocal(vm->ip_func, ins->operand.local);
+        size_t local_size = 0;
+        if (local)
+            local_size = cc__vm_local_size(local);
+        
+        if (!local_size)
         {
-        case CC_IR_LOCALTYPEID_FUNC: *ptr_on_stack = (void*)vm->ip_func; break;
-        case CC_IR_LOCALTYPEID_BLOCK: *ptr_on_stack = cc_ir_func_getblock(vm->ip_func, local->localid); break;
-        default: *ptr_on_stack = NULL;
+            vm->vmexception = CC_VMEXCEPTION_INVALID_LOCALID;
+            return;
         }
+        
+        void* value_on_stack = cc__vm_push(vm, ins->data_size);
+        if (!value_on_stack)
+            return;
+
+        cc_bigint_u32(ins->data_size, value_on_stack, (uint32_t)local_size);
+        break;
+    }
+    case CC_IR_OPCODE_LLD:
+    {
+        const cc_ir_local* local = cc_ir_func_getlocal(vm->ip_func, ins->operand.local);
+        size_t local_size = 0;
+        size_t local_offset;
+        if (local)
+            local_size = cc__vm_local_size(local), local_offset = cc__vm_local_stack_offset(vm, local->localid);
+        
+        if (!local_size)
+        {
+            vm->vmexception = CC_VMEXCEPTION_INVALID_LOCALID;
+            return;
+        }
+
+        const void* src = vm->locals_sp + local_offset;
+        void* dst = cc__vm_push(vm, local_size);
+        if (!dst)
+            return;
+            
+        memcpy(dst, src, local_size);
         break;
     }
     case CC_IR_OPCODE_ICONST:
@@ -319,4 +356,57 @@ uint8_t* cc__vm_pop(cc_vm* vm, uint32_t num_bytes)
     if (!cc__vm_offset_stack(vm, (int32_t)num_bytes))
         return NULL;
     return previous_sp;
+}
+
+size_t cc__vm_local_stack_offset(cc_vm* vm, cc_ir_localid localid)
+{
+    size_t offset = 0;
+    for (size_t i = 0; i < vm->ip_func->num_locals; ++i)
+    {
+        const cc_ir_local* local = &vm->ip_func->locals[i];
+        size_t local_size = cc__vm_local_size(local);
+        if (local->localid == localid)
+            return local_size ? offset : (size_t)-1;
+        offset += local_size;
+    }
+
+    return (size_t)-1;
+}
+
+size_t cc__vm_local_stack_size(const cc_ir_func* func)
+{
+    size_t offset = 0;
+    for (size_t i = 0; i < func->num_locals; ++i)
+        offset += cc__vm_local_size(&func->locals[i]);
+    return offset;
+}
+
+size_t cc__vm_local_size(const cc_ir_local* local)
+{
+    switch (local->localtypeid)
+    {
+    case CC_IR_LOCALTYPEID_INT: return local->data_size;
+    case CC_IR_LOCALTYPEID_PTR: return sizeof(void*);
+    default:                    return 0;
+    }
+}
+
+bool cc__vm_enter_func(cc_vm* vm, const cc_ir_func* func)
+{
+    if (func == NULL)
+    {
+        vm->vmexception = CC_VMEXCEPTION_INVALID_IP;
+        return false;
+    }
+
+    size_t local_stack_size = cc__vm_local_stack_size(func);
+    uint8_t* local_stack = cc__vm_push(vm, local_stack_size);
+    if (!local_stack)
+        return false;
+    
+    vm->locals_sp = local_stack;
+    vm->ip = 0;
+    vm->ip_block = func->entry_block;
+    vm->ip_func = func;
+    return true;
 }
