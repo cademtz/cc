@@ -38,6 +38,7 @@ const cc_ir_ins_format cc_ir_ins_formats[CC_IR_OPCODE__COUNT] =
     {"jmp",     {0}},
     {"jnz",     {CC_IR_OPERAND_DATASIZE, CC_IR_OPERAND_LOCAL}},
     {"ret",     {0}},
+    {"int",     {CC_IR_OPERAND_U32}},
 };
 
 /// @brief Append a new local to the function's locals array
@@ -266,3 +267,4 @@ void cc_ir_block_jnz(cc_ir_block* block, cc_ir_datasize data_size, const cc_ir_b
     block->ins[index].operand.local = dst->localid;
 }
 void cc_ir_block_ret(cc_ir_block* block) { cc__ir_block_append_noop(block, CC_IR_OPCODE_RET); }
+void cc_ir_block_int(cc_ir_block* block, uint32_t interrupt_code) { cc__ir_block_append_u32op(block, CC_IR_OPCODE_INT, interrupt_code); }

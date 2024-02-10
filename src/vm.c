@@ -318,6 +318,12 @@ void cc_vm_step(cc_vm* vm)
         vm->ip_func = NULL;
         break;
     }
+    case CC_IR_OPCODE_INT:
+    {
+        vm->vmexception = CC_VMEXCEPTION_INTERRUPT;
+        vm->interrupt = ins->operand.u32;
+        break;
+    }
     }
 }
 

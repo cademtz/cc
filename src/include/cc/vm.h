@@ -40,7 +40,7 @@ typedef struct cc_vm
     /// @brief The last exception. Must be cleared before resuming execution.
     cc_vmexception vmexception;
     /// @brief A user-defined interrupt code. Assigned when `vmexception == CC_VMEXCEPTION_INTERRUPT`.
-    uint8_t interrupt;
+    uint32_t interrupt;
 } cc_vm;
 
 void cc_vm_create(cc_vm* vm, size_t stack_size, const cc_ir_func* entrypoint);

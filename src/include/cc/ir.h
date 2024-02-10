@@ -130,6 +130,8 @@ enum cc_ir_opcode
     /// @brief Return
     /// @details Pseudocode: `return`
     CC_IR_OPCODE_RET,
+    /// @brief Interrupt the VM with a 32-bit user-defined code
+    CC_IR_OPCODE_INT,
 
     /// @brief The number of valid opcodes.
     /// Do not create any opcodes greater-than or equal-to this value.
@@ -334,3 +336,4 @@ void cc_ir_block_call(cc_ir_block* block);
 void cc_ir_block_jmp(cc_ir_block* block);
 void cc_ir_block_jnz(cc_ir_block* block, cc_ir_datasize data_size, const cc_ir_block* dst);
 void cc_ir_block_ret(cc_ir_block* block);
+void cc_ir_block_int(cc_ir_block* block, uint32_t interrupt_code);
