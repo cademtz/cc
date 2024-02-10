@@ -320,19 +320,3 @@ uint8_t* cc__vm_pop(cc_vm* vm, uint32_t num_bytes)
         return NULL;
     return previous_sp;
 }
-
-void cc__vm_write_int(void* dst, uint32_t u32, size_t num_bytes)
-{
-    if (num_bytes > sizeof(u32))
-        num_bytes = sizeof(u32);
-    switch (num_bytes)
-    {
-    case 1: *(uint8_t*)dst = (uint8_t)u32; break;
-    case 2: *(uint16_t*)dst = (uint16_t)u32; break;
-    case 3:
-        *(uint16_t*)dst = (uint16_t)u32;
-        *((uint8_t*)dst + 3) = (uint8_t)(u32 >> 16);
-        break;
-    case 4: *(uint32_t*)dst = u32; break;
-    }
-}

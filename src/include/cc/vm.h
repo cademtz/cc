@@ -57,8 +57,3 @@ uint8_t* cc__vm_pop(cc_vm* vm, uint32_t num_bytes);
 /// @brief Push `num_bytes` to stack
 /// @return Pointer to the pushed bytes, or `nullptr` if vmexception was written
 uint8_t* cc__vm_push(cc_vm* vm, uint32_t num_bytes);
-/// @brief Write an integer
-/// @param num_bytes Size of the integer, no larger than sizeof u32
-void cc__vm_write_int(void* dst, uint32_t u32, size_t num_bytes);
-/// @brief Read an integer
-void cc__vm_read_int(uint32_t* dst, const void* src, size_t num_bytes);
