@@ -34,6 +34,22 @@
 /// @brief Align `x` to the next multiple of `align`
 #define CC_ALIGN(x, align) ((x % align) ? x - (x % align) + align : x)
 
+/**
+ * @brief Create a heap-allocated + null-terminated copy of `str`.
+ * 
+ * Null-chars are preserved if the length is given.
+ * The copy always include a null-terminator, even if the length includes null-chars at the end.
+ * 
+ * @param str The input string
+ * @param str_len Length of the string (excluding the null-terminator). Passing `(size_t)-1` will use strlen.
+ * @param new_len (optional) Stores length of the new string, excluding the null-terminator.
+ * @return `NULL` if the string is empty.
+ */
+char* cc_strclone_char(const char* str, size_t str_len, size_t* new_len);
+/// @brief wchar variant of @ref cc_strclone_char
+/// @see cc_strclone_char
+wchar_t* cc_strclone_wchar(const wchar_t* str, size_t str_len, size_t* new_len);
+
 typedef struct cc_arena
 {
     size_t size;
@@ -223,28 +239,9 @@ uint32_t cc_hmap32_get_index(const cc_hmap32* map, uint32_t key);
 /// @return `true` if `key` exists and `out_value` is set
 bool cc_hmap32_get(const cc_hmap32* map, uint32_t key, uint32_t* out_value);
 
-typedef struct cc_vec
-{
-    void* elems;
-    size_t size;
-    size_t cap;
-    size_t size_elem;
-} cc_vec;
-
-/// @brief Create a vector
-/// @param size_elem The size of an element, in bytes
-void cc_vec_create(cc_vec* v, size_t size_elem);
-void cc_vec_destroy(cc_vec* v);
-/// @brief Reset the vector without shrinking the capacity
-static inline void cc_vec_clear(cc_vec* v) { v->size = 0; }
-static inline void* cc_vec_get(const cc_vec* v, size_t index)
-{
-    assert(index < v->size && "Vector index out of bounds");
-    return (uint8_t*)v->elems + index * v->size_elem;
-}
-void cc_vec_insert(cc_vec* v, const void* element, size_t index);
-static inline void cc_vec_push(cc_vec* v, const void* element) {
-    cc_vec_insert(v, element, v->size);
-}
-void cc_vec_pop(cc_vec* v);
-void cc_vec_delete(cc_vec* v, size_t index);
+/// @brief Resize a vector
+/// @param vec Pointer to a heap pointer. It is overwritten with a reallocated pointer.
+/// @return Pointer to the last element in the vector
+void* cc__vec_resize(void** vec, size_t elem_size, size_t num_elems);
+/// @brief Resize a vector and return a pointer to the last element
+#define cc_vec_resize(vec, length) cc__vec_resize((void**)&(vec), sizeof((vec)[0]), (length));

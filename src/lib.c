@@ -1,5 +1,43 @@
 #include <cc/lib.h>
 
+char* cc_strclone_char(const char* str, size_t str_len, size_t* new_len)
+{
+    char* clone = NULL;
+    if (str == NULL)
+        str_len = 0;
+    if (str_len == (size_t)-1)
+        str_len = strlen(str);
+
+    if (str_len)
+    {
+        clone = (char*)calloc(str_len + 1, sizeof(clone[0]));
+        memcpy(clone, str, str_len * sizeof(str[0]));
+    }
+        
+    if (new_len)
+        *new_len = str_len;
+    return clone;
+}
+
+wchar_t* cc_strclone_wchar(const wchar_t* str, size_t str_len, size_t* new_len)
+{
+    wchar_t* clone = NULL;
+    if (str == NULL)
+        str_len = 0;
+    if (str_len == (size_t)-1)
+        str_len = wcslen(str);
+
+    if (str_len)
+    {
+        clone = (wchar_t*)calloc(str_len + 1, sizeof(clone[0]));
+        memcpy(clone, str, str_len * sizeof(str[0]));
+    }
+
+    if (new_len)
+        *new_len = str_len;
+    return clone;
+}
+
 cc_arena* cc_arena_create(void)
 {
     cc_arena* a = (cc_arena*)malloc(sizeof(*a));
@@ -440,50 +478,8 @@ bool cc_hmap32_get(const cc_hmap32* map, uint32_t key, uint32_t* out_value)
     return true;
 }
 
-void cc_vec_create(cc_vec* v, size_t size_elem)
+void* cc__vec_resize(void** vec, size_t elem_size, size_t num_elems)
 {
-    memset(v, 0, sizeof(*v));
-    v->size_elem = size_elem;
+    *vec = realloc(*vec, elem_size * num_elems);
+    return *(uint8_t**)vec + (num_elems - 1) * elem_size;
 }
-void cc_vec_destroy(cc_vec* v) {
-    free(v->elems);
-}
-
-void cc_vec_insert(cc_vec* v, const void* element, size_t index)
-{
-    assert(index <= v->size && "Vector index out of bounds");
-
-    size_t new_size = v->size + 1;
-    if (new_size > v->cap)
-    {
-        v->cap = new_size;
-        v->elems = realloc(v->elems, v->cap * v->size_elem);
-    }
-
-    if (index < v->size)
-    {
-        uint8_t* low = (uint8_t*)v->elems + index * v->size_elem;
-        memmove(low + v->size_elem, low, (v->size - index) * v->size_elem);
-    }
-    v->size = new_size;
-    memcpy((uint8_t*)v->elems + index * v->size_elem, element, v->size_elem);
-}
-
-void cc_vec_pop(cc_vec* v)
-{
-    assert(v->size != 0 && "Pop on empty array");
-    --v->size;
-}
-
-void cc_vec_delete(cc_vec* v, size_t index)
-{
-    assert(index < v->size && "Vector index out of bounds");
-
-    --v->size;
-    if (index < v->size)
-    {
-        uint8_t* low = (uint8_t*)v->elems + index * v->size_elem;
-        memmove(low, low + v->size_elem, (v->size - index) * v->size_elem);
-    }
-}
-

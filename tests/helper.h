@@ -35,4 +35,6 @@ int print_ast_ternary(const cc_ast_expr* expr);
 void print_ast_expr(const cc_ast_expr* expr);
 void print_ast_stmt(const cc_ast_stmt* stmt);
 void print_ast_body(const cc_ast_body* body);
+/// @param func (optional) The function, to resolve names
+void print_ir_ins(const struct cc_ir_ins* ins, const struct cc_ir_func* func);
 void print_ir_func(const struct cc_ir_func* func);

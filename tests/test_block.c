@@ -5,12 +5,14 @@
 
 int test_block(void)
 {
-    cc_ir_func irfunc;
-    cc_ir_func_create(&irfunc, CC_STR("my_func"));
+    cc_ir_object obj;
+    cc_ir_object_create(&obj);
 
-    cc_ir_block* entry = irfunc.entry_block;
-    cc_ir_block* loop = cc_ir_func_insert(&irfunc, entry, CC_STR("loop"));
-    cc_ir_block* end = cc_ir_func_insert(&irfunc, loop, CC_STR("end"));
+    cc_ir_func* irfunc = cc_ir_object_add_func(&obj, NULL, -1);
+
+    cc_ir_block* entry = irfunc->entry_block;
+    cc_ir_block* loop = cc_ir_func_insert(irfunc, entry, CC_STR("loop"), -1);
+    cc_ir_block* end = cc_ir_func_insert(irfunc, loop, CC_STR("end"), -1);
 
     const int INT_SIZE = 4;
 
@@ -21,8 +23,8 @@ int test_block(void)
     cc_ir_block_ret(end);
 
     printf("Original IR:\n");
-    print_ir_func(&irfunc);
+    print_ir_func(irfunc);
 
-    cc_ir_func_destroy(&irfunc);
+    cc_ir_object_destroy(&obj);
     return 1;
 }
