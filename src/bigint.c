@@ -114,7 +114,7 @@ const uint8_t* cc_bigint_spanptr_const(size_t size, const void* src, size_t inde
 {
     const uint8_t* begin_ptr = (const uint8_t*)src + index;
     if (cc_bigint_endianness() == CC_BIGINT_ENDIAN_BIG)
-        begin_ptr = (const uint8_t*)src + size - 1 - len;
+        begin_ptr = (const uint8_t*)src + size - len;
     return begin_ptr;
 }
 
@@ -626,7 +626,10 @@ void cc_bigint_extend_sign(size_t dst_size, void* dst, size_t src_size, const vo
 {
     if (dst_size <= src_size)
     {
-        memcpy(dst, src, dst_size);
+        // Copy range: [0, dst_size)
+        size_t size_copy_span = dst_size;
+        const uint8_t* src_copy_span = cc_bigint_spanptr_const(src_size, src, 0, size_copy_span);
+        memcpy(dst, src_copy_span, size_copy_span);
         return;
     }
 
@@ -644,9 +647,12 @@ void cc_bigint_extend_sign(size_t dst_size, void* dst, size_t src_size, const vo
 
 void cc_bigint_extend_zero(size_t dst_size, void* dst, size_t src_size, const void* src)
 {
-        if (dst_size <= src_size)
+    if (dst_size <= src_size)
     {
-        memcpy(dst, src, dst_size);
+        // Copy range: [0, dst_size)
+        size_t size_copy_span = dst_size;
+        const uint8_t* src_copy_span = cc_bigint_spanptr_const(src_size, src, 0, size_copy_span);
+        memcpy(dst, src_copy_span, size_copy_span);
         return;
     }
 
