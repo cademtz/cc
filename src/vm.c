@@ -744,6 +744,7 @@ bool cc__vmobject_flatten(cc_vmobject* vmobject, const cc_ir_func* func)
     // Code transformations:
     // - Replace locals logic with frame pointer logic
     // - Replace blockid operands with a byte offset to that block, relative to the next instruction
+    // - Replace 0 with `sizeof(void*)` in `data_size` and `extend_data_size` operands
     for (size_t i = blockmap[0].ins_index; i < vmobject->num_ins; ++i)
     {   
         cc_ir_ins* ins = &vmobject->ins[i];
@@ -780,33 +781,46 @@ bool cc__vmobject_flatten(cc_vmobject* vmobject, const cc_ir_func* func)
         }
         }
         
-        // Replace any blockid operands with byte offsets
+        // - Replace blockid operands with byte offsets
+        // - Replace 0 in data_size and extend_data_size operands with `sizeof(void*)`
         size_t next_ip = i + 1;
         const cc_ir_ins_format* fmt = &cc_ir_ins_formats[ins->opcode];
         for (size_t i = 0; i < CC_IR_MAX_OPERANDS; ++i)
         {
-            if (fmt->operand[i] != CC_IR_OPERAND_BLOCKID)
-                continue;
-
-            cc_ir_blockid* blockid = &ins->operand.blockid;
-
-            // Find relevant block in blockmap, and replace `blockid` with an offset
-            const struct _blockmap* mapped_block = NULL;
-            for (size_t i = 0; i < num_blocks; ++i)
+            switch (fmt->operand[i])
             {
-                if (blockmap[i].blockid == *blockid)
+            case CC_IR_OPERAND_BLOCKID:
+            {
+                cc_ir_blockid* blockid = &ins->operand.blockid;
+
+                // Find relevant block in blockmap, and replace `blockid` with an offset
+                const struct _blockmap* mapped_block = NULL;
+                for (size_t i = 0; i < num_blocks; ++i)
                 {
-                    mapped_block = &blockmap[i];
-                    break;
+                    if (blockmap[i].blockid == *blockid)
+                    {
+                        mapped_block = &blockmap[i];
+                        break;
+                    }
                 }
+                if (mapped_block == NULL) // No such block exists
+                {
+                    result = false;
+                    goto end; 
+                }
+                
+                *blockid = (cc_ir_blockid)((mapped_block->ins_index - next_ip) * sizeof(vmobject->ins[0]));
+                break;
             }
-            if (mapped_block == NULL) // No such block exists
-            {
-                result = false;
-                goto end; 
+            case CC_IR_OPERAND_DATASIZE:
+                if (ins->data_size == 0)
+                    ins->data_size = sizeof(void*);
+                break;
+            case CC_IR_OPERAND_EXTEND_DATASIZE:
+                if (ins->operand.extend_data_size == 0)
+                    ins->operand.extend_data_size = sizeof(void*);
+                break;
             }
-            
-            *blockid = (cc_ir_blockid)((mapped_block->ins_index - next_ip) * sizeof(vmobject->ins[0]));
         }
     }
 
