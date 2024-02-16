@@ -83,6 +83,8 @@ enum cc_ir_opcode
     CC_IR_OPCODE_STORE,
     /// @brief Duplicate the last n bytes on the stack
     CC_IR_OPCODE_DUPE,
+    /// @brief Free the last n bytes on the stack
+    CC_IR_OPCODE_FREE,
     
     // === Arithmetic ===
 
@@ -461,6 +463,7 @@ void cc_ir_block_uconst(cc_ir_block* block, cc_ir_datasize data_size, uint32_t v
 void cc_ir_block_load(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_store(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_dupe(cc_ir_block* block, cc_ir_datasize data_size);
+void cc_ir_block_free(cc_ir_block* block, cc_ir_datasize bytes);
 void cc_ir_block_add(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_mul(cc_ir_block* block, cc_ir_datasize data_size);

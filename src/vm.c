@@ -157,6 +157,12 @@ void cc_vm_step(cc_vm* vm)
         memcpy(dst, src, ins->data_size);
         break;
     }
+    case CC_IR_OPCODE_FREE:
+    {
+        if (!cc__vm_pop(vm, ins->data_size))
+            return;
+        break;
+    }
 
     // === Unary operations ===
 

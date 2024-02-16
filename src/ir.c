@@ -17,6 +17,7 @@ const cc_ir_ins_format cc_ir_ins_formats[CC_IR_OPCODE__COUNT] =
     {"load",    {CC_IR_OPERAND_DATASIZE}},
     {"store",   {CC_IR_OPERAND_DATASIZE}},
     {"dupe",    {CC_IR_OPERAND_DATASIZE}},
+    {"free",    {CC_IR_OPERAND_DATASIZE}},
 
     {"add",     {CC_IR_OPERAND_DATASIZE}},
     {"sub",     {CC_IR_OPERAND_DATASIZE}},
@@ -327,6 +328,7 @@ void cc_ir_block_uconst(cc_ir_block* block, cc_ir_datasize data_size, uint32_t v
 void cc_ir_block_load(cc_ir_block* block, cc_ir_datasize data_size)     { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_LOAD, data_size); }
 void cc_ir_block_store(cc_ir_block* block, cc_ir_datasize data_size)    { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_STORE, data_size); }
 void cc_ir_block_dupe(cc_ir_block* block, cc_ir_datasize data_size)     { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_DUPE, data_size); }
+void cc_ir_block_free(cc_ir_block* block, cc_ir_datasize bytes)         { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_FREE, bytes); }
 void cc_ir_block_add(cc_ir_block* block, cc_ir_datasize data_size)      { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_ADD, data_size); }
 void cc_ir_block_sub(cc_ir_block* block, cc_ir_datasize data_size)      { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_SUB, data_size); }
 void cc_ir_block_mul(cc_ir_block* block, cc_ir_datasize data_size)      { cc__ir_block_append_sizeop(block, CC_IR_OPCODE_MUL, data_size); }
