@@ -192,6 +192,7 @@ void cc_vm_step(cc_vm* vm)
         }
 
         cc__vm_push(vm, push_size);
+        break;
     }
 
 
