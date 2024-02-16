@@ -317,7 +317,7 @@ void cc_ir_block_sizel(cc_ir_block* block, cc_ir_datasize data_size, cc_ir_local
     cc__ir_block_append_localop(block, CC_IR_OPCODE_SIZEL, localid)->data_size = data_size;
 }
 void cc_ir_block_loadl(cc_ir_block* block, cc_ir_localid localid) { cc__ir_block_append_localop(block, CC_IR_OPCODE_LOADL, localid); }
-void cc_ir_block_addrg(cc_ir_block* block, cc_ir_localid localid) { cc__ir_block_append_localop(block, CC_IR_OPCODE_ADDRG, localid); }
+void cc_ir_block_addrg(cc_ir_block* block, cc_ir_symbolid symbolid) { cc__ir_block_append_localop(block, CC_IR_OPCODE_ADDRG, symbolid); }
 void cc_ir_block_iconst(cc_ir_block* block, cc_ir_datasize data_size, int32_t value) {
     cc__ir_block_append_u32op(block, CC_IR_OPCODE_ICONST, (uint32_t)value)->data_size = data_size;
 }
@@ -350,6 +350,9 @@ void cc_ir_block_sext(cc_ir_block* block, cc_ir_datasize data_size, cc_ir_datasi
 }
 void cc_ir_block_call(cc_ir_block* block)   { cc__ir_block_append_noop(block, CC_IR_OPCODE_CALL); }
 void cc_ir_block_jmp(cc_ir_block* block)    { cc__ir_block_append_noop(block, CC_IR_OPCODE_JMP); }
+void cc_ir_block_jz(cc_ir_block* block, cc_ir_datasize data_size, const cc_ir_block* dst) {
+    cc__ir_block_append_sizeop(block, CC_IR_OPCODE_JZ, data_size)->operand.blockid = dst->blockid;
+}
 void cc_ir_block_jnz(cc_ir_block* block, cc_ir_datasize data_size, const cc_ir_block* dst) {
     cc__ir_block_append_sizeop(block, CC_IR_OPCODE_JNZ, data_size)->operand.blockid = dst->blockid;
 }

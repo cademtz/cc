@@ -454,7 +454,7 @@ void cc_ir_block_argp(cc_ir_block* block);
 void cc_ir_block_addrl(cc_ir_block* block, cc_ir_localid localid);
 void cc_ir_block_sizel(cc_ir_block* block, cc_ir_datasize data_size, cc_ir_localid localid);
 void cc_ir_block_loadl(cc_ir_block* block, cc_ir_localid localid);
-void cc_ir_block_addrg(cc_ir_block* block, cc_ir_localid localid);
+void cc_ir_block_addrg(cc_ir_block* block, cc_ir_symbolid symbolid);
 void cc_ir_block_sizep(cc_ir_block* block, cc_ir_datasize data_size);
 void cc_ir_block_iconst(cc_ir_block* block, cc_ir_datasize data_size, int32_t value);
 void cc_ir_block_uconst(cc_ir_block* block, cc_ir_datasize data_size, uint32_t value);
@@ -480,6 +480,7 @@ void cc_ir_block_zext(cc_ir_block* block, cc_ir_datasize data_size, cc_ir_datasi
 void cc_ir_block_sext(cc_ir_block* block, cc_ir_datasize data_size, cc_ir_datasize extend_data_size);
 void cc_ir_block_call(cc_ir_block* block);
 void cc_ir_block_jmp(cc_ir_block* block);
+void cc_ir_block_jz(cc_ir_block* block, cc_ir_datasize data_size, const cc_ir_block* dst);
 void cc_ir_block_jnz(cc_ir_block* block, cc_ir_datasize data_size, const cc_ir_block* dst);
 void cc_ir_block_ret(cc_ir_block* block);
 void cc_ir_block_int(cc_ir_block* block, uint32_t interrupt_code);
