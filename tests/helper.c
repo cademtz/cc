@@ -319,7 +319,7 @@ void print_ir_ins(const cc_ir_ins* ins, const cc_ir_func* func)
             break;
         }
         case CC_IR_OPERAND_DATASIZE: printf(" size=%u,", ins->data_size); break;
-        case CC_IR_OPERAND_EXTEND_DATASIZE: printf(" extend_size=%u,", ins->data_size); break;
+        case CC_IR_OPERAND_EXTEND_DATASIZE: printf(" extend_size=%u,", ins->operand.extend_data_size); break;
         default: printf(" <unknown operand>,"); break;
         }
     }
