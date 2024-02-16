@@ -168,30 +168,32 @@ void cc_vm_step(cc_vm* vm)
 
     case CC_IR_OPCODE_NEG:
     case CC_IR_OPCODE_NOT:
-    case CC_IR_OPCODE_ZEXT:
-    case CC_IR_OPCODE_SEXT:
     {
-        uint32_t* lhs = (uint32_t*)cc__vm_pop(vm, ins->data_size);
+        uint8_t* lhs = cc__vm_pop(vm, ins->data_size);
         if (!lhs)
             return;
-
-        size_t push_size = ins->data_size;
-
         switch (ins->opcode)
         {
         case CC_IR_OPCODE_NEG: cc_bigint_neg(ins->data_size, lhs); break;
         case CC_IR_OPCODE_NOT: cc_bigint_not(ins->data_size, lhs); break;
-        case CC_IR_OPCODE_ZEXT:
-        case CC_IR_OPCODE_SEXT:
-            push_size = ins->operand.extend_data_size;
-            if (ins->opcode == CC_IR_OPCODE_ZEXT)
-                cc_bigint_extend_zero(ins->operand.extend_data_size, lhs, ins->data_size, lhs);
-            else
-                cc_bigint_extend_sign(ins->operand.extend_data_size, lhs, ins->data_size, lhs);
-            break;
         }
+        cc__vm_push(vm, ins->data_size);
+        break;
+    }
+    case CC_IR_OPCODE_ZEXT:
+    case CC_IR_OPCODE_SEXT:
+    {
+        uint8_t* src = cc__vm_pop(vm, ins->data_size);
+        if (!src)
+            return;
+        uint8_t* dst = cc__vm_push(vm, ins->operand.extend_data_size);
+        if (!dst)
+            return;
 
-        cc__vm_push(vm, push_size);
+        if (ins->opcode == CC_IR_OPCODE_ZEXT)
+            cc_bigint_extend_zero(ins->operand.extend_data_size, dst, ins->data_size, src);
+        else
+            cc_bigint_extend_sign(ins->operand.extend_data_size, dst, ins->data_size, src);
         break;
     }
 
@@ -310,8 +312,8 @@ void cc_vm_step(cc_vm* vm)
         if (!target_on_stack)
             return;
         
-        uint8_t* target = *target_on_stack;
-        vm->args_pointer = vm->sp;
+        uint8_t* new_ip = *target_on_stack;
+        uint8_t* new_args_pointer = vm->sp;
 
         uint8_t** old_ip;
         uint8_t** old_fp;
@@ -327,7 +329,10 @@ void cc_vm_step(cc_vm* vm)
         *old_ip = vm->ip;
         *old_fp = vm->frame_pointer;
         *old_ap = vm->args_pointer;
-        vm->ip = target;
+
+        vm->ip = new_ip;
+        vm->frame_pointer = vm->sp;
+        vm->args_pointer = new_args_pointer;
         break;
     }
     case CC_IR_OPCODE_RET:
