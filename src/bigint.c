@@ -7,21 +7,11 @@ enum cc_bigint_endian cc_bigint_endianness()
     return *(uint8_t*)&value == 0 ? CC_BIGINT_ENDIAN_BIG : CC_BIGINT_ENDIAN_LITTLE;
 }
 
-void cc_bigint_i32(size_t size, void* dst, int32_t src)
-{
-    memset(dst, src < 0 ? 0xFF : 0, size);
-    int32_t* low32 = (int32_t*)dst;
-    if (cc_bigint_endianness() == CC_BIGINT_ENDIAN_BIG)
-        low32 = (int32_t*)((uint8_t*)dst + size - 4);
-    *low32 = src;
+void cc_bigint_i32(size_t size, void* dst, int32_t src) {
+    cc_bigint_extend_sign(size, dst, sizeof(src), &src);
 }
-void cc_bigint_u32(size_t size, void* dst, uint32_t src)
-{
-    memset(dst, 0, size);
-    uint32_t* low32 = (int32_t*)dst;
-    if (cc_bigint_endianness() == CC_BIGINT_ENDIAN_BIG)
-        low32 = (uint32_t*)((uint8_t*)dst + size - 4);
-    *low32 = src;
+void cc_bigint_u32(size_t size, void* dst, uint32_t src) {
+    cc_bigint_extend_zero(size, dst, sizeof(src), &src);
 }
 
 static int cc__char_to_int(int radix, int ch, int* out_int)
