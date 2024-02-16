@@ -233,7 +233,12 @@ void cc_vm_step(cc_vm* vm)
             // Allocate scratch space for the quotient and remainder if required
             if (ins->data_size > sizeof(_stack_quotient))
             {
-                vm->scratch = (uint8_t*)realloc(vm->scratch, ins->data_size * 2);
+                size_t required_scratch = ins->data_size * 2;
+                if (required_scratch > vm->scratch_size)
+                {
+                    vm->scratch_size = required_scratch;
+                    vm->scratch = (uint8_t*)realloc(vm->scratch, required_scratch);
+                }
                 quotient = vm->scratch;
                 remainder = vm->scratch + ins->data_size;
             }
