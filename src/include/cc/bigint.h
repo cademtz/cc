@@ -106,10 +106,10 @@ void cc_bigint_rsh_u32(size_t size, void* dst, uint32_t src);
 // === Casting ===
 
 /// @brief Sign-extend integer
-/// @param dst The output. Can be the same as `src`, otherwise it must not overlapping.
+/// @param dst The output. May overlap with `src`.
 /// @param src The input, to be extended and stored in `dst`
 void cc_bigint_extend_sign(size_t dst_size, void* dst, size_t src_size, const void* src);
 /// @brief Zero-extend integer
-/// @param dst The output. Can be the same as `src`, otherwise it must not overlapping.
+/// @param dst The output. May overlap with `src.`
 /// @param src The input, to be extended and stored in `dst`
 void cc_bigint_extend_zero(size_t dst_size, void* dst, size_t src_size, const void* src);

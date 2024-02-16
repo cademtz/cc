@@ -360,22 +360,22 @@ void cc_bigint_udiv(size_t size, const void* num, const void* denom, void* quoti
     if (size == 1)
     {
         *(uint8_t*)quotient = *(const uint8_t*)num / *(const uint8_t*)denom;
-        *(uint8_t*)remainder = *(const uint8_t*)num - *(uint8_t*)quotient;
+        *(uint8_t*)remainder = *(const uint8_t*)num - *(const uint8_t*) num * *(uint8_t*)quotient;
     }
     else if (size == 2)
     {
         *(uint16_t*)quotient = *(const uint16_t*)num / *(const uint16_t*)denom;
-        *(uint16_t*)remainder = *(const uint16_t*)num - *(uint16_t*)quotient;
+        *(uint16_t*)remainder = *(const uint16_t*)num - *(const uint16_t*)denom * *(uint16_t*)quotient;
     }
     else if (size == 4)
     {
         *(uint32_t*)quotient = *(const uint32_t*)num / *(const uint32_t*)denom;
-        *(uint32_t*)remainder = *(const uint32_t*)num - *(uint32_t*)quotient;
+        *(uint32_t*)remainder = *(const uint32_t*)num - *(const uint32_t*)denom * *(uint32_t*)quotient;
     }
     else if (size == 8)
     {
         *(uint64_t*)quotient = *(const uint64_t*)num / *(const uint64_t*)denom;
-        *(uint64_t*)remainder = *(const uint64_t*)num - *(uint64_t*)quotient;
+        *(uint64_t*)remainder = *(const uint64_t*)num - *(const uint64_t*)denom * *(uint64_t*)quotient;
     }
     else
     {
@@ -623,16 +623,18 @@ void cc_bigint_extend_sign(size_t dst_size, void* dst, size_t src_size, const vo
         return;
     }
 
+    int sign = cc_bigint_sign(src_size, src);
+
     // Copy range: [0, src_size)
     size_t size_copy_span = src_size;
     uint8_t* dst_copy_span          = cc_bigint_spanptr(dst_size, dst, 0, size_copy_span);
     const uint8_t* src_copy_span    = cc_bigint_spanptr_const(src_size, src, 0, size_copy_span);
-    memcpy(dst_copy_span, src_copy_span, size_copy_span);
+    memmove(dst_copy_span, src_copy_span, size_copy_span);
     
     // Fill range: [src_size, dst_size)
     size_t size_fill_span = dst_size - src_size;
     uint8_t* fill_span = cc_bigint_spanptr(dst_size, dst, src_size, size_fill_span);
-    memset(fill_span, -cc_bigint_sign(src_size, src), size_fill_span);
+    memset(fill_span, -sign, size_fill_span);
 }
 
 void cc_bigint_extend_zero(size_t dst_size, void* dst, size_t src_size, const void* src)
@@ -650,7 +652,7 @@ void cc_bigint_extend_zero(size_t dst_size, void* dst, size_t src_size, const vo
     size_t size_copy_span = src_size;
     uint8_t* dst_copy_span          = cc_bigint_spanptr(dst_size, dst, 0, size_copy_span);
     const uint8_t* src_copy_span    = cc_bigint_spanptr_const(src_size, src, 0, size_copy_span);
-    memcpy(dst_copy_span, src_copy_span, size_copy_span);
+    memmove(dst_copy_span, src_copy_span, size_copy_span);
     
     // Fill range: [src_size, dst_size)
     size_t size_fill_span = dst_size - src_size;
