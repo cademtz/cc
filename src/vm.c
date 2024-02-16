@@ -642,17 +642,17 @@ bool cc_vmobject_compile(cc_vmobject* vmobject, const cc_ir_object* irobject, si
         const cc_ir_ins_format* fmt = &cc_ir_ins_formats[ins->opcode];
         for (size_t i = 0; i < CC_IR_MAX_OPERANDS; ++i)
         {
-            if (fmt->operand[i] != CC_IR_OPERAND_LOCAL)
+            if (fmt->operand[i] != CC_IR_OPERAND_SYMBOLID)
                 continue;
             
-            cc_ir_localid* localid = &ins->operand.local;
+            cc_ir_symbolid* symbolid = &ins->operand.symbolid;
 
-            // Find localid in `importmap`, if it's an import
+            // Find symbolid in `importmap`, if it's an import
             cc_vmimport* vmimport = NULL;
             for (size_t i = 0; i < num_imports; ++i)
             {
                 struct _importmap* entry = &importmap[i];
-                if (entry->ir_id == *localid)
+                if (entry->ir_id == *symbolid)
                 {
                     vmimport = entry->vmimport;
                     break;
@@ -662,9 +662,10 @@ bool cc_vmobject_compile(cc_vmobject* vmobject, const cc_ir_object* irobject, si
             // ID is an imported symbol. Add to the list of referencing IDs and continue
             if (vmimport)
             {
+                *symbolid = (cc_ir_symbolid)-1;
                 ++vmimport->num_code_refs;
-                cc_ir_localid** ref = (cc_ir_localid**)cc_vec_resize(vmimport->code_refs, vmimport->num_code_refs);
-                *ref = localid;
+                cc_ir_symbolid** ref = (cc_ir_symbolid**)cc_vec_resize(vmimport->code_refs, vmimport->num_code_refs);
+                *ref = symbolid;
                 continue;
             }
             
@@ -673,10 +674,10 @@ bool cc_vmobject_compile(cc_vmobject* vmobject, const cc_ir_object* irobject, si
             for (size_t i = 0; i < vmobject->num_symbols; ++i)
             {
                 struct _symbolmap* entry = &symbolmap[i];
-                if (entry->ir_id == *localid)
+                if (entry->ir_id == *symbolid)
                 {
                     exists = true;
-                    *localid = entry->vm_id;
+                    *symbolid = entry->vm_id;
                     break;
                 }
             }
